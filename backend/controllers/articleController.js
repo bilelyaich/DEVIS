@@ -1,40 +1,36 @@
-const sequelize = require("../db/config");
-const Article = require("../models/article");
+const { Sequelize } = require("sequelize");
+const defineArticleModel = require("../models/article");
+const defineLdfpModel = require("../models/Ldfp");
+const { getSequelizeConnection } = require("../db/config");
 
-const getAllcodearticle = async (_req, res) => {
-  try {
-   
-    if (!Article) {
-      return res.status(500).json({
-        message: "Le modèle Article n'est pas correctement importé",
-      });
-    }
 
-    const articles = await Article.findAll({
-      attributes: ["code"],
-    });
 
-    if (articles.length === 0) {
-      return res.status(404).json({
-        message: "Aucun article trouvé",
-      });
-    }
+const initializeDynamicModels = (sequelize) => {
+  const Article = defineArticleModel(sequelize); 
+  const Ldfp = defineLdfpModel(sequelize);
 
-    return res.status(200).json({
-      message: "Codes des articles récupérés avec succès",
-      articles,
-    });
-  } catch (error) {
-    console.error("Erreur dans la récupération des articles:", error);
-    return res.status(500).json({
-      message: "Erreur lors de la récupération des articles",
-      error: error.message,
-    });
-  }
+  return { Article, Ldfp }; 
 };
 
-const getFamilles = async (_req, res) => {
+
+const getFamilles = async (req, res) => {
+  const { dbName } = req.params;
+
+  if (!dbName) {
+    return res.status(400).json({
+      message: "Le nom de la base de données est requis.",
+    });
+  }
+
   try {
+    
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+
+   
+    const { Article } = initializeDynamicModels(dynamicSequelize);
+
+    
     const familles = await Article.findAll({
       attributes: ["famille"],
       group: ["famille"],
@@ -42,42 +38,80 @@ const getFamilles = async (_req, res) => {
 
     if (familles.length === 0) {
       return res.status(404).json({
-        message: "Aucune famille d'article trouvée",
+        message: "Aucune famille d'article trouvée.",
       });
     }
 
     return res.status(200).json({
-      message: "Familles d'articles récupérées avec succès",
+      message: "Familles d'articles récupérées avec succès.",
       familles: familles.map((famille) => famille.famille),
     });
   } catch (error) {
-    console.error(
-      "Erreur lors de la récupération des familles des articles:",
-      error
-    );
+    console.error("Erreur lors de la récupération :", error);
     return res.status(500).json({
-      message: "Erreur lors de la récupération des familles des articles",
+      message: "Erreur lors de la récupération des familles des articles.",
+      error: error.message,
+    });
+  }
+};
+const getAllcodearticle = async (req, res) => {
+  const { dbName } = req.params;
+
+  if (!dbName) {
+    return res.status(400).json({
+      message: "Le nom de la base de données est requis.",
+    });
+  }
+
+  try {
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+    const { Article } = initializeDynamicModels(dynamicSequelize);
+
+    const articles = await Article.findAll({
+      attributes: ["code"],
+    });
+
+    if (articles.length === 0) {
+      return res.status(404).json({
+        message: "Aucun article trouvé.",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Codes des articles récupérés avec succès.",
+      articles,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des articles :", error.message);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des articles.",
       error: error.message,
     });
   }
 };
 
 
+
 const getCodesByFamille = async (req, res) => {
+  const { dbName, famille } = req.params;
+
+  if (!dbName || !famille) {
+    return res.status(400).json({
+      message: "Le nom de la base de données et la famille sont requis.",
+    });
+  }
+
   try {
-    const { famille } = req.params; 
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
 
-    if (!famille) {
-      return res.status(400).json({
-        message: "La famille est requise",
-      });
-    }
+    const { Article } = initializeDynamicModels(dynamicSequelize);
 
-    // On récupère les codes, libellé, unité et puht des articles
     const articles = await Article.findAll({
-      attributes: ["code", "libelle", "unite", "puht","tauxtva"],  // Ajout des attributs libelle, unite et puht
+      attributes: ["code", "libelle", "unite", "puht", "tauxtva","prix1"],
       where: {
-        famille: famille, 
+        famille: famille,
       },
     });
 
@@ -87,19 +121,19 @@ const getCodesByFamille = async (req, res) => {
       });
     }
 
-    // Retourne les articles avec leurs informations (code, libelle, unite, puht)
     return res.status(200).json({
       message: `Articles pour la famille ${famille} récupérés avec succès`,
       articles: articles.map((article) => ({
         code: article.code,
         libelle: article.libelle,
         unite: article.unite,
-        puht: article.puht,
-        tauxtva: article.tauxtva
+        prix1: article.prix1,
+        tauxtva: article.tauxtva,
+        
       })),
     });
   } catch (error) {
-    console.error("Erreur dans la récupération des articles par famille:", error);
+    console.error("Erreur lors de la récupération des articles par famille:", error);
     return res.status(500).json({
       message: "Erreur lors de la récupération des articles",
       error: error.message,
@@ -108,31 +142,47 @@ const getCodesByFamille = async (req, res) => {
 };
 
 
-
 const getArticleDetailsByCode = async (req, res) => {
+  const { dbName, code } = req.params; 
+
+  if (!dbName || !code) {
+    return res.status(400).json({
+      message: "Le nom de la base de données et le code de l'article sont requis",
+    });
+  }
+
   try {
-    const { code } = req.params;
-    if (!code) {
-      return res.status(400).json({
-        message: "Le code de l'article est requis",
-      });
-    }
+   
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate(); 
+
+    
+    const { Article } = initializeDynamicModels(dynamicSequelize);
 
     
     const article = await Article.findOne({
-      attributes: ["libelle", "unite", "nbrunite", "code","puht","tauxtva"], 
-      where: {
-        code: code,  
+      attributes: [
+        "libelle",
+        "unite",
+        "nbrunite",
+        "code",
+        "prix1",
+        "tauxtva",
+        "CONFIG",
+      ], 
+      where: { 
+        code: code, 
       },
     });
 
+  
     if (!article) {
       return res.status(404).json({
         message: `Aucun article trouvé avec le code ${code}`,
       });
     }
 
-   
+    
     return res.status(200).json({
       message: `Détails de l'article pour le code ${code} récupérés avec succès`,
       article: {
@@ -140,11 +190,13 @@ const getArticleDetailsByCode = async (req, res) => {
         libelle: article.libelle,
         unite: article.unite,
         nbrunite: article.nbrunite,
-        puht:article.puht, 
-        tauxtva:article.tauxtva 
+        prix1: article.prix1,
+        tauxtva: article.tauxtva,
+        CONFIG: article.CONFIG,
       },
     });
   } catch (error) {
+    
     console.error("Erreur lors de la récupération des détails de l'article:", error);
     return res.status(500).json({
       message: "Erreur lors de la récupération des détails de l'article",
@@ -153,9 +205,257 @@ const getArticleDetailsByCode = async (req, res) => {
   }
 };
 
+
+const updateConfig = async (req, res) => {
+  const { dbName, code } = req.params;
+  const { newConfigValue } = req.body; 
+
+  if (!dbName || !code || !newConfigValue) {
+    return res.status(400).json({
+      message: "Le nom de la base de données, le code de l'article et la nouvelle configuration sont requis."
+    });
+  }
+
+  try {
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+    const { Article, Ldfp } = initializeDynamicModels(dynamicSequelize);
+
+    
+    const article = await Article.findOne({ where: { code } });
+
+    if (!article) {
+      return res.status(404).json({ message: "Article non trouvé." });
+    }
+
+  article.CONFIG = newConfigValue;
+    await article.save();
+
+    const existingEntry = await Ldfp.findOne({ where: { CodeART: code } });
+
+    if (existingEntry) {
+      existingEntry.Conf = newConfigValue;
+      await existingEntry.save();
+      return res.status(200).json({
+        message: "Configuration mise à jour avec succès.",
+        updatedArticle: article,
+        updatedLdfpEntry: existingEntry,
+      });
+    } else {
+      const newLdfpEntry = await Ldfp.create({
+        CodeART: code,
+        Conf: newConfigValue,
+      });
+      return res.status(200).json({
+        message: "Nouvelle entrée créée avec succès.",
+        updatedArticle: article,
+        newLdfpEntry: newLdfpEntry,
+      });
+    }
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour:", error);
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+
+const getSearchResultsByClient = async (req, res) => {
+  const { dbName, searchTerm } = req.params;
+
+  if (!dbName || !searchTerm) {
+    return res.status(400).json({
+      message: "Le nom de la base de données et le code client sont requis.",
+    });
+  }
+
+  try {
+ 
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+
+  
+    const query = `
+      SELECT 
+        dfp.NUMBL,
+        dfp.ADRCLI,
+        dfp.CODECLI,
+        dfp.CODEFACTURE,
+        dfp.CP,
+        dfp.MTTC,
+        dfp.RSCLI,
+        ldfp.CODEART,
+        ldfp.DESART,
+        ldfp.QTEART,
+        ldfp.REMISE,
+        ldfp.TAUXTVA
+      FROM dfp
+      LEFT JOIN ldfp ON dfp.NUMBL = ldfp.NUMBL 
+      WHERE dfp.CODECLI = :codecli
+    `;
+
+    
+    const [results, metadata] = await dynamicSequelize.query(query, {
+      replacements: { codecli: searchTerm },  
+      type: dynamicSequelize.QueryTypes.SELECT, 
+    });
+    
+   
+    console.log("Type de 'results':", typeof results);  // 
+    console.log("Structure de 'results':", results);    
+
+   
+    const resultArray = Array.isArray(results) ? results : [results];  
+
+    if (resultArray.length === 0) {
+      return res.status(404).json({
+        message: "Aucun devis trouvé pour ce client.",
+      });
+    }
+
+   
+    return res.status(200).json({
+      message: "Résultats récupérés avec succès.",
+      results: resultArray.map(result => ({
+        NUMBL: result.NUMBL,
+        ADRCLI: result.ADRCLI,
+        CODECLI: result.CODECLI,
+        CODEFACTURE: result.CODEFACTURE,
+        CP: result.CP,
+        MTTC: result.MTTC,
+        RSCLI: result.RSCLI,
+        CODEART: result.CODEART,
+        DESART: result.DESART,
+        QTEART: result.QTEART,
+        REMISE: result.REMISE,
+        TAUXTVA: result.TAUXTVA,
+      })),
+    });
+    
+  } catch (error) {
+    console.error("Erreur lors de la récupération des résultats par client:", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des résultats.",
+      error: error.message,
+    });
+  }
+};
+
+
+const getAllCodeCli = async (req, res) => {
+  const { dbName } = req.params;
+
+  if (!dbName) {
+    return res.status(400).json({
+      message: "Le nom de la base de données est requis.",
+    });
+  }
+
+  try {
+   
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+    console.log(`Connexion réussie à la base de données : ${dbName}`);
+
+     const query = 'SELECT DISTINCT CODECLI FROM dfp';
+    let [results] = await dynamicSequelize.query(query, {
+      type: dynamicSequelize.QueryTypes.SELECT,
+    });
+
+    
+    console.log("Résultats bruts de la requête : ", JSON.stringify(results));
+
+    
+    if (!Array.isArray(results)) {
+      results = [results];
+    }
+
+  
+    if (results.length > 0) {
+      
+      const codesClients = results.map(result => result.CODECLI);
+      console.log("Codes clients extraits : ", codesClients);
+
+      return res.status(200).json({
+        message: "Codes clients récupérés avec succès.",
+        codecli: codesClients,
+      });
+    } else {
+      return res.status(404).json({
+        message: "Aucun code client trouvé pour cette base de données.",
+      });
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des codes clients :", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des codes clients.",
+      error: error.message,
+    });
+  }
+};
+
+const getLastNumbl = async (req, res) => {
+  const { dbName } = req.params;
+  const { datebl } = req.query;
+  
+ 
+  const year = new Date(datebl).getFullYear();
+  
+  if (!dbName || !datebl) {
+    return res.status(400).json({
+      message: "Le nom de la base de données et la date de BL sont requis.",
+    });
+  }
+  
+  try {
+    const dynamicSequelize = getSequelizeConnection(dbName);
+    await dynamicSequelize.authenticate();
+  
+    const numblRecords = await dynamicSequelize.query(
+      'SELECT NUMBL FROM dfp WHERE YEAR(DATEBL) = :year ORDER BY NUMBL DESC limit 1', 
+      {
+        replacements: { year },
+        type: dynamicSequelize.QueryTypes.SELECT,
+      }
+    );
+  
+    if (numblRecords.length === 0) {
+      const yearSuffix = new Date(datebl).getFullYear().toString().slice(2);
+      const newNUMBL = `PF${yearSuffix}00001`;
+  
+      return res.status(200).json({
+        message: "Aucun NUMBL trouvé pour cette date. Nouveau NUMBL généré.",
+        newNUMBL ,
+      });
+    }
+  
+    const lastNumblValue = numblRecords[0].NUMBL;
+    const lastNumblIncrement = parseInt(lastNumblValue.slice(6)) + 1;
+  
+    const yearSuffix = lastNumblValue.slice(2, 4);
+    const newNUMBL = `PF${yearSuffix}${lastNumblIncrement.toString().padStart(5, '0')}`;
+  
+    return res.status(200).json({
+      message: "Dernier NUMBL récupéré et nouveau NUMBL généré avec succès.",
+      lastNUMBL : lastNumblValue,
+      newNUMBL ,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération du dernier NUMBL:", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération du dernier NUMBL.",
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   getAllcodearticle,
   getFamilles,
   getCodesByFamille,
-  getArticleDetailsByCode,  
+  getArticleDetailsByCode,
+  updateConfig,
+  getSearchResultsByClient,
+  getAllCodeCli,
+  getLastNumbl
 };

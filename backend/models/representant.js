@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
-const {sequelizeLC24} = require('../db/config');
+const {sequelize} = require('../db/config');
 
 
-const Representant = sequelizeLC24.define('Representant', {
+const Representant = sequelize.define('Representant', {
     Code: {
     type: DataTypes.STRING, 
     primaryKey: true,       

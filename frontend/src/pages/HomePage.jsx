@@ -1,13 +1,30 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {FaRegHandshake,FaPhoneAlt,FaInfoCircle,FaTwitter,FaLinkedinIn,FaFacebookF,} from "react-icons/fa";
+import {
+  FaRegHandshake,
+  FaPhoneAlt,
+  FaInfoCircle,
+  FaTwitter,
+  FaLinkedinIn,
+  FaFacebookF,
+} from "react-icons/fa";
 
 function HomePage() {
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       <header className="bg-white shadow-xl py-8">
-        <div className="container mx-auto flex justify-end px-8">
-          {" "}
+        <div className="container mx-auto flex justify-between items-center px-8">
+          <div className="flex items-center">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="w-20 h-20 object-contain mr-4"
+            />
+            <span className="text-2xl font-bold text-teal-500">
+              Demande de Devis
+            </span>
+          </div>
+
           <nav>
             <ul className="flex space-x-10 text-lg font-medium text-gray-800">
               <li>
@@ -53,22 +70,39 @@ function HomePage() {
 
       <section id="services" className="bg-white py-24 px-8">
         <div className="container mx-auto text-center">
-          <h3 className="text-3xl font-semibold text-gray-800 mb-12">Nos Services</h3>
+          <h3 className="text-3xl font-semibold text-gray-800 mb-12">
+            Nos Services
+          </h3>
           <div className="grid md:grid-cols-3 gap-12">
             <div className="border-2 border-teal-500 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
               <FaRegHandshake className="text-teal-600 text-4xl mb-6 mx-auto" />
-              <h4 className="text-xl font-medium text-gray-800 mb-3">Consultation</h4>
-              <p className="text-gray-600">Recevez des conseils experts et des recommandations personnalisées pour votre projet.</p>
+              <h4 className="text-xl font-medium text-gray-800 mb-3">
+                Consultation
+              </h4>
+              <p className="text-gray-600">
+                Recevez des conseils experts et des recommandations
+                personnalisées pour votre projet.
+              </p>
             </div>
             <div className="border-2 border-teal-500 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
               <FaPhoneAlt className="text-teal-600 text-4xl mb-6 mx-auto" />
-              <h4 className="text-xl font-medium text-gray-800 mb-3">Support 24/7</h4>
-              <p className="text-gray-600">Notre équipe est disponible à tout moment pour répondre à vos questions.</p>
+              <h4 className="text-xl font-medium text-gray-800 mb-3">
+                Support 24/7
+              </h4>
+              <p className="text-gray-600">
+                Notre équipe est disponible à tout moment pour répondre à vos
+                questions.
+              </p>
             </div>
             <div className="border-2 border-teal-500 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
               <FaInfoCircle className="text-teal-600 text-4xl mb-6 mx-auto" />
-              <h4 className="text-xl font-medium text-gray-800 mb-3">Formation</h4>
-              <p className="text-gray-600">Des formations spécialisées pour vous aider à maîtriser nos outils et services.</p>
+              <h4 className="text-xl font-medium text-gray-800 mb-3">
+                Formation
+              </h4>
+              <p className="text-gray-600">
+                Des formations spécialisées pour vous aider à maîtriser nos
+                outils et services.
+              </p>
             </div>
           </div>
         </div>
@@ -117,7 +151,7 @@ function HomePage() {
                   <FaFacebookF />
                 </a>
                 <a
-                  href="https://twitter.com"                                                                     
+                  href="https://twitter.com"
                   className="text-teal-500 hover:text-teal-400 text-3xl transition duration-300"
                 >
                   <FaTwitter />

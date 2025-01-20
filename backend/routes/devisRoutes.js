@@ -1,21 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { getAllClients,getClientByCode, getClientByRsoc,getAllDevis,getLibpvByNumbl,getDevisWithDetails,getDevisByNumbl,getDevisByMonth,getTotalDevisCount,getDevisStats} = require('../controllers/devisController');
+const { getAllClients,getClientByCode, getClientByRsoc,getAllDevis,getLibpvByNumbl,getDevisWithDetails,getTotalDevis,getDevisCountByMonthAndYear,getDevisValidees,createDevis,getCodeRepAndRsRep,updateDevis} = require('../controllers/devisController');
 const { getAllcodearticle } = require('../controllers/articleController');
 
 
-router.get('/clients', getAllClients);
-router.get('/clients/code/:code', getClientByCode); 
-router.get('/clients/rsoc/:rsoc', getClientByRsoc);  
-router.get('/article', getAllcodearticle);
-router.get("/devis", getAllDevis);
-router.get('/devis/libpv/:numbl', getLibpvByNumbl);
-router.get('/devis/details', getDevisWithDetails);
-router.get('/devis/:numbl', getDevisByNumbl);
+router.get("/:dbName/clients", getAllClients);
+router.get('/:dbName/clients/code/:code', getClientByCode); 
+router.get('/:dbName/clients/rsoc/:rsoc', getClientByRsoc);  
+router.get('/:dbName/article', getAllcodearticle);
+router.get("/:dbName/devis", getAllDevis);
+router.get('/:dbName/devis/libpv/:numbl', getLibpvByNumbl);
+router.get('/:dbName/devis/details', getDevisWithDetails);
+router.get("/devis-count-by-month-and-year/:dbName", getDevisCountByMonthAndYear);
+router.get('/:dbName/devis/total',getTotalDevis);
+router.get("/:dbName/devis-validees",getDevisValidees);
+router.post('/:dbName/create', createDevis);
+router.get('/get-representant-details/:databaseName/:numbl', getCodeRepAndRsRep);
+router.put("/:dbName/:numbl", updateDevis);
 
-router.get('/devis-by-month', getDevisByMonth);
-router.get("/total-devis", getTotalDevisCount);
-router.get("/devis/stats", getDevisStats); 
 
 module.exports = router;
-                            

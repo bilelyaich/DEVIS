@@ -2,30 +2,38 @@ import React, { useState, useEffect } from "react";
 import { Edit, Eye, Trash2 } from "react-feather";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+
 const DevisList = () => {
   const [devis, setDevis] = useState([]);
   const [filteredDevis, setFilteredDevis] = useState([]);
   const [filters, setFilters] = useState({
     NUMBL: "",
+    DATEBL: "",
     libpv: "",
     CODECLI: "",
     ADRCLI: "",
-    RSCLI: "",
+    rsoc: "",
     MTTC: "",
   });
-
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDevis = async () => {
       try {
+        const dbName = localStorage.getItem("selectedDatabase");
+        if (!dbName) {
+          throw new Error("Aucune base de données sélectionnée.");
+        }
+
         const response = await fetch(
-          "http://localhost:5000/api/devis/devis/details"
+          `http://localhost:5000/api/devis/${dbName}/devis/details`
         );
+
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération des devis");
         }
+
         const data = await response.json();
         setDevis(data);
         setFilteredDevis(data);
@@ -46,16 +54,12 @@ const DevisList = () => {
       const filtered = devis.filter((devisItem) => {
         return (
           (!filters.NUMBL || devisItem.NUMBL?.includes(filters.NUMBL)) &&
-          (!filters.libpv ||
-            devisItem.client?.libpv?.includes(filters.libpv)) &&
-          (!filters.CODECLI ||
-            devisItem.client?.CODECLI?.includes(filters.CODECLI)) &&
-          (!filters.ADRCLI ||
-            devisItem.client?.ADRCLI?.includes(filters.ADRCLI)) &&
-          (!filters.RSCLI ||
-            devisItem.client?.RSCLI?.includes(filters.RSCLI)) &&
-          (!filters.MTTC ||
-            devisItem.client?.MTTC?.toString().includes(filters.MTTC))
+          (!filters.DATEBL || devisItem.DATEBL?.includes(filters.DATEBL)) &&
+          (!filters.libpv || devisItem.client?.libpv?.includes(filters.libpv)) &&
+          (!filters.CODECLI || devisItem.client?.CODECLI?.includes(filters.CODECLI)) &&
+          (!filters.ADRCLI || devisItem.client?.ADRCLI?.includes(filters.ADRCLI)) &&
+          (!filters.rsoc || devisItem.client?.rsoc?.includes(filters.rsoc)) &&
+          (!filters.MTTC || devisItem.client?.MTTC?.toString().includes(filters.MTTC))
         );
       });
       setFilteredDevis(filtered);
@@ -64,9 +68,8 @@ const DevisList = () => {
   }, [filters, devis]);
 
   const handleView = (NUMBL) => {
-    // Logique pour afficher le devis, ici nous redirigeons vers la page de détails du devis
     console.log(`Voir le devis ${NUMBL}`);
-    navigate(`/devis-details/${NUMBL}`); // Redirection vers la page de détails
+    navigate(`/devis-details/${NUMBL}`);
   };
 
   const handleDelete = (id) => {
@@ -83,8 +86,6 @@ const DevisList = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-     
-
       <h1 className="text-black font-bold italic text-3xl text-center mb-6">
         Liste des Devis
       </h1>
@@ -111,6 +112,9 @@ const DevisList = () => {
                 Numéro BL
               </th>
               <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
+                Date
+              </th>
+              <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
                 Point de vente
               </th>
               <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
@@ -128,9 +132,7 @@ const DevisList = () => {
               <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
                 Articles
               </th>
-              <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                Actions
-              </th>
+             
             </tr>
           </thead>
 
@@ -146,6 +148,10 @@ const DevisList = () => {
                   {devisItem.NUMBL || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
+  {devisItem.client?.DATEBL || "N/A"}
+</td>
+
+                <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
                   {devisItem.client?.libpv || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
@@ -155,51 +161,44 @@ const DevisList = () => {
                   {devisItem.client?.ADRCLI || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
-                  {devisItem.client?.RSCLI || "N/A"}
+                  {devisItem.client?.rsoc || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
                   {devisItem.client?.MTTC || "N/A"} TND
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
-                  <ul className="list-disc pl-5">
-                    {devisItem.articles?.map((article, i) => (
-                      <li key={i} className="text-sm text-gray-600">
-                        {article.CodeART} - {article.DesART} ({article.QteART})
-                      </li>
-                    )) || "Aucun article"}
-                  </ul>
-                </td>
-
-                <td className="px-6 py-4 text-gray-700 border-b border-gray-300 flex gap-2">
-  {/* Bouton "Voir" */}
-  <button
-    onClick={() => handleView(devisItem.NUMBL)}
-    className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600"
-    title="Voir"
-  >
-    <Eye size={16} />
-  </button>
-
-  {/* Bouton "Modifier" */}
-  <Link to={`/Devis-Form/${devisItem.NUMBL}`}>
-    <button
-      className="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600"
-      title="Modifier"
-    >
-      <Edit size={16} />
-    </button>
-  </Link>
-
-  {/* Bouton "Supprimer" */}
-  <button
-    onClick={() => handleDelete(devisItem.NUMBL)}
-    className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
-    title="Supprimer"
-  >
-    <Trash2 size={16} />
-  </button>
+  {devisItem.articles?.length > 0 ? (
+    <table className="min-w-full text-sm">
+      <thead>
+        <tr>
+        <th className="px-4 py-2 text-left">Famille</th>
+          <th className="px-4 py-2 text-left">Code ART</th>
+          <th className="px-4 py-2 text-left">Description</th>
+          <th className="px-4 py-2 text-left">Quantité</th>
+          <th className="px-4 py-2 text-left">Remise</th>
+          <th className="px-4 py-2 text-left">Taux TVA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {devisItem.articles.map((article, i) => (
+          <tr key={i} className="border-b hover:bg-gray-100">
+              <td className="px-4 py-2">{article.famille}</td>
+            <td className="px-4 py-2">{article.CodeART}</td>
+            <td className="px-4 py-2">{article.DesART}</td>
+            <td className="px-4 py-2">{article.QteART}</td>
+            <td className="px-4 py-2">{article.Remise}</td>
+            <td className="px-4 py-2">{article.TauxTVA}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p>Aucun article</p>
+  )}
 </td>
 
+
+               
               </tr>
             ))}
           </tbody>

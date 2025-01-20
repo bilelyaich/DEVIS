@@ -1,8 +1,9 @@
-const { Sequelize } = require('sequelize');
+const { Sequelize } = require("sequelize");
 
-const sequelizeLC24  = new Sequelize('LC24', 'root', '', {
-  host: '127.0.0.1',
-  dialect: 'mysql',
+const defaultDbConfig = {
+  username: "root",
+  password: "",
+  host: "127.0.0.1",
   port: 3306,
   logging: false,
   pool: {
@@ -11,33 +12,84 @@ const sequelizeLC24  = new Sequelize('LC24', 'root', '', {
     acquire: 30000,
     idle: 10000,
   },
-});
+};
+     
+
+const getSequelizeConnection = (dbName = "") => {
+  return new Sequelize(
+    dbName ? `mysql://root:@127.0.0.1:3306/${dbName}` : "mysql://root:@127.0.0.1:3306",
+    { ...defaultDbConfig, database: dbName || undefined }
+  );
+};
 
 
-const sequelizeUserERP = new Sequelize('usererp', 'root', '', {
-  host: '127.0.0.1',
-  dialect: 'mysql', 
-  port: 3306,    
-  logging: false,   
-  pool: {
-    max: 5,
-    min: 0,                                                                   
-    acquire: 30000,
-    idle: 10000,
-  },            
-});                    
+const sequelize = getSequelizeConnection();
 
- 
-(async () => {   
-  try {   
-    await sequelizeLC24 .authenticate();
-    console.log('Connexion réussie à la base de données LC24.');   
-    await sequelizeUserERP.authenticate();
-    console.log('Connexion réussie à la base de données usererp.');
-  } catch (error) {                  
-    console.error('Erreur lors de la connexion à l\'une des bases de données :', error);
+
+const sequelizeUserERP = getSequelizeConnection("usererp");
+
+
+const getDatabases = async () => {
+  try {
+    const result = await sequelize.query("SHOW DATABASES;", {
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    const databases = result.map((db) => db.Database);
+
+    if (databases.length === 0) {
+      throw new Error("Aucune base de données disponible.");
+    }
+
+    return databases;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des bases de données :", error.message);
+    return [];
   }
-})();                                
+};
 
 
-module.exports ={ sequelizeLC24, sequelizeUserERP};                                             
+const connectToAllDatabases = async () => {
+  const databases = await getDatabases();
+
+  if (databases.length === 0) {
+    console.log("Aucune base de données disponible.");
+    return;
+  }
+
+  for (const dbName of databases) {
+    try {
+      const dbConnection = getSequelizeConnection(dbName);
+      await dbConnection.authenticate();
+      
+      await dbConnection.close();
+    } catch (error) {
+      console.error(`Erreur lors de la connexion à la base de données ${dbName} :`, error.message);
+    }
+  }
+};
+
+
+const testConnections = async () => {
+  try {
+    await sequelize.authenticate();
+   
+
+    await sequelizeUserERP.authenticate();
+    console.log("Connexion réussie à la base de données usererp.");
+  } catch (error) {
+    console.error("Erreur lors de la connexion à l'une des bases de données :", error.message);
+  }
+};
+
+
+testConnections();
+
+
+connectToAllDatabases();
+
+
+module.exports = {
+  sequelize,
+  sequelizeUserERP,
+  getSequelizeConnection
+};

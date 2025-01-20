@@ -150,7 +150,7 @@ const DevisForm = () => {
   const [Lignes, setLignes] = useState([]);
   const [lignesValidees, setLignesValidees] = useState([]);
 
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // Mode édition ou non
 
   const filteredItems = filteredArticles.filter((article) => {
     const codeMatch = article.code
@@ -164,7 +164,7 @@ const DevisForm = () => {
 
   
 
-
+  // Fonction pour passer en mode édition
  
 
   const cancelEditMode = () => {
@@ -288,7 +288,7 @@ const DevisForm = () => {
     }
 
     const updatedLignes = [...formData.lignes];
-    updatedLignes[index].code = code; 
+    updatedLignes[index].code = code; // Mise à jour du code
 
     setFormData({ ...formData, lignes: updatedLignes });
 
@@ -406,7 +406,7 @@ const DevisForm = () => {
             return;
           }
 
-    
+          // Appel à l'API pour récupérer les détails du client
           const response = await axios.get(
             `http://localhost:5000/api/devis/${dbName}/clients/code/${selectedCode}`
           );
@@ -431,7 +431,7 @@ const DevisForm = () => {
         }
       }
     } else {
-      setFormData((prevData) => ({ ...prevData, code: "" })); 
+      setFormData((prevData) => ({ ...prevData, code: "" })); // Si aucun client n'est sélectionné, on vide le champ
     }
   };
 
@@ -565,7 +565,7 @@ const DevisForm = () => {
 
         setFormData((prevData) => ({
           ...prevData,
-          NUMBL: data.newNUMBL, 
+          NUMBL: data.newNUMBL, // Met à jour numbl dans formData
         }));
 
         setDevisOptions((prevOptions) => [
@@ -592,7 +592,7 @@ const DevisForm = () => {
       return;
     }
 
-    fetchDevisList(selectedDatabase); 
+    fetchDevisList(selectedDatabase); // Récupérer la liste des devis
   }, []);
 
   const fetchDevisList = async (database) => {
@@ -618,7 +618,7 @@ const DevisForm = () => {
       if (response.status === 200) {
         const { devis } = response.data;
         setDevisList(devis);
-        setSelectedDevisIndex(0); 
+        setSelectedDevisIndex(0); // Sélectionner le premier devis
         fetchDevisDetails(database, devis[0].numbl);
       } else {
         setError("Aucun devis trouvé.");
@@ -628,23 +628,23 @@ const DevisForm = () => {
     }
   };
 
-
+  // Fonction pour récupérer les détails d'un devis
   const fetchDevisDetails = async (database, NUMBL) => {
     try {
       console.log("Chargement des détails du devis pour numbl : ", NUMBL);
       const token = localStorage.getItem("token");
-
+  
       if (!token) {
         setError("Utilisateur non authentifié.");
         return;
       }
-
-   
+  
+      // Réinitialiser avant récupération
       setFormData({
         ...formData,
-        lignes: [],
+        lignes: [], // Réinitialise les lignes
       });
-
+  
       const response = await axios.get(
         `http://localhost:5000/api/users/get-devis-details/${database}/${NUMBL}`,
         {
@@ -653,18 +653,21 @@ const DevisForm = () => {
           },
         }
       );
-
+  
       if (response.status === 200) {
         const devisData = response.data.devis[0];
         const dfpDevis = devisData.dfpDetails;
-        const lignes = devisData.lignes;
-
-    
+        let lignes = devisData.lignes;
+  
+        // Filtrer les lignes vides avant de les stocker dans le localStorage
+        lignes = lignes.filter(line => line.CodeART && line.DesART);
+  
+        // Sauvegarder les lignes filtrées dans le localStorage
         localStorage.setItem("lignesValidees", JSON.stringify(lignes));
-
+  
         setDevisDetails(dfpDevis);
         setlignes(lignes);
-
+  
         setFormData({
           ...formData,
           NUMBL: dfpDevis.NUMBL,
@@ -686,15 +689,20 @@ const DevisForm = () => {
       setError("Erreur serveur lors de la récupération du devis.");
     }
   };
-
- 
+  
+  // Lors du rechargement de la page, récupérer les lignes depuis le localStorage
   useEffect(() => {
     const savedLignes = localStorage.getItem("lignesValidees");
     if (savedLignes) {
-      setlignes(JSON.parse(savedLignes));
+      const lignes = JSON.parse(savedLignes);
+  
+      // Vérifier les lignes avant de les définir dans l'état
+      if (lignes.length > 0) {
+        setlignes(lignes);
+      }
     }
   }, []);
-
+  
   const handleDevisNavigation = (direction) => {
     const newIndex = selectedDevisIndex + direction;
 
@@ -712,7 +720,7 @@ const DevisForm = () => {
       return;
     }
 
-
+    // Sauvegarder le nouveau numbl dans le localStorage
     localStorage.setItem("selectedDevisNumbl", newNumbl);
 
     fetchDevisDetails(selectedDatabase, newNumbl); // Charger le nouveau devis
@@ -813,30 +821,30 @@ const DevisForm = () => {
     label: representant.CODEREP,
   }));
 
- 
+  // Options pour la société (RSREP) (initialement vide, mis à jour après sélection du vendeur)
   const representantsSocieteOptions = representants.map((representant) => ({
     value: representant.RSREP,
     label: representant.RSREP,
   }));
 
- 
+  // Gestion du changement de sélection du vendeur (CODEREP)
   const handleVendeurChange = (selectedOption) => {
     if (selectedOption) {
       const selectedCode = selectedOption.value;
 
-  
+      // Trouver l'objet correspondant à CODEREP
       const selectedRepresentant = representants.find(
         (representant) => representant.CODEREP === selectedCode
       );
 
-    
+      // Mettre à jour le formulaire avec CODEREP et RSREP correspondants
       setFormData((prevData) => ({
         ...prevData,
         CODEREP: selectedCode,
         RSREP: selectedRepresentant ? selectedRepresentant.RSREP : "",
       }));
     } else {
-   
+      // Si rien n'est sélectionné, réinitialiser les valeurs
       setFormData((prevData) => ({ ...prevData, CODEREP: "", RSREP: "" }));
     }
   };
@@ -1340,86 +1348,69 @@ const DevisForm = () => {
     try {
       const token = localStorage.getItem("token");
       const database = localStorage.getItem("selectedDatabase");
-
+  
       if (!token) {
         setError("Utilisateur non authentifié.");
         return;
       }
-
+  
       if (!database) {
         setError("Aucune base de données sélectionnée.");
         return;
       }
-
+  
       if (!formData || !formData.NUMBL) {
         setError("Les données du formulaire sont incomplètes.");
         return;
       }
-
+  
       const savedLignes = localStorage.getItem("lignesValidees");
       if (!savedLignes) {
         console.error("Aucun article trouvé dans le localStorage.");
         return;
       }
-
+  
       const lignes = JSON.parse(savedLignes);
-
       if (!Array.isArray(lignes) || lignes.length === 0) {
         console.error("Les articles sont vides ou mal formatés.");
         return;
       }
-
-      const formattedLignes = lignes.map((ligne) => ({
-        CodeART: ligne.code || "",
-        DesART: ligne.libelle || "",
-        QteART: ligne.nbrunite || 0,
-        PUART: ligne.prix1 || 0,
-        Remise: ligne.Remise || 0,
-        TauxTVA: ligne.tauxtva || 0,
-        Unite: ligne.unite || "",
-        Conf: ligne.CONFIG || "",
-        famille: ligne.famille || "",
-        nbun: ligne.nbrunite || 0,
-      }));
-
-      setIsNewMode(true);
-
+  
       const newLigne = {
-        CodeART: "",
-        DesART: "",
-        QteART: 0,
-        PUART: 0,
-        Remise: 0,
-        TauxTVA: 0,
-        Unite: "",
-        Conf: "",
+        code: "",
+        libelle: "",
+        nbrunite: "",
+        prix1: "",
+        tauxtva: "",
+        unite: "",
         famille: "",
-        nbun: 0,
+        netHt: "",
+        Remise: "",
+        quantite: "",
+        CONFIG: "",
         isVisible: true,
       };
-
+  
+      const updatedLignes = [...lignes];
+      localStorage.setItem("lignesValidees", JSON.stringify(updatedLignes));
+  
       setFormData((prevFormData) => ({
         ...prevFormData,
         lignes: [newLigne, ...prevFormData.lignes],
       }));
-
- 
+  
+      setIsNewMode(true);
+  
+      // Préparation du corps de la requête pour l'API
       const requestBody = {
         NUMBL: formData.NUMBL || "",
-        code: formData.CODECLI || "",
+        code: formData.code || "",
         rsoc: formData.rsoc || "",
-        articles: formattedLignes,
-        MREMISE: formData.MREMISE || 0,
-        MTTC: formData.MTTC || 0,
-        rsoc: formData.rsoc || "",
-        CODEREP: formData.CODEREP || "",
-        RSREP: formData.RSREP || "",
-        comm: formData.comm || "",
+        articles: updatedLignes,
       };
-
-      console.log("Données envoyées :", requestBody);
-
-      // Envoi de la requête PUT
+  
+      console.log("Données envoyées :", requestBody);  // Vérification des données avant l'envoi
+  
       const response = await axios.put(
         `http://localhost:5000/api/devis/${database}/${formData.NUMBL}`,
         requestBody,
@@ -1429,22 +1420,20 @@ const DevisForm = () => {
           },
         }
       );
-
+    
       if (response.status === 200) {
         alert("Devis modifié avec succès !");
-
-     
-        setIsNewMode(true); 
+        setIsNewMode(true);
       } else {
-        setError(
-          response.data.message || "Erreur lors de la modification du devis."
-        );
+        setError(response.data.message || "Erreur lors de la modification du devis.");
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à l'API :", error);
       setError("Erreur serveur lors de la modification du devis.");
     }
   };
+  
+  
 
   return (
     <div>
@@ -1456,127 +1445,147 @@ const DevisForm = () => {
           }}
           className="p-6 bg-gray-50 rounded-lg space-y-6"
         >
-          <nav className="bg-white w-full h-[110px] border-b border-gray-700 flex items-center px-6">
-          <div className="flex space-x-4">
-      {!isNewMode && !isEditMode ? (
-        <>
-          <button
-            type="button"
-            onClick={addLigne}
-            className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faFolderPlus} className="text-blue-600 text-3xl" />
-            <span className="text-sm font-semibold text-gray-700">Nouveaux</span>
-          </button>
-          <div className="border-r border-gray-300 h-8"></div>
-      
-          <button
-            type="button"
-            className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-            onClick={handleUpdateDevis}
-          >
-            <FontAwesomeIcon icon={faEdit} className="text-yellow-600 text-3xl" />
-            <span className="text-sm font-semibold text-gray-700">Modifier</span>
-          </button>
-          <div className="border-r border-gray-300 h-8"></div>
-       
-          <button
-            type="button"
-            onClick={removeLigne}
-            className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faTrashAlt} className="text-red-600 text-3xl" />
-            <span className="text-sm font-semibold text-gray-700">Supprimer</span>
-          </button>
-          <div className="border-r border-gray-300 h-8"></div>
-  
-          <button
-            onClick={handleSearchClick}
-            className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faSearch} className="text-blue-600 text-3xl" />
-            <span className="text-sm font-semibold text-gray-700">Rechercher</span>
-          </button>
+     <nav className="bg-white w-full h-[110px] border-b border-gray-700 flex items-center px-6">
+            <div className="flex space-x-8 items-center">
+              {!isNewMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={addLigne}
+                    className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon
+                      icon={faFolderPlus}
+                      className="text-blue-600 text-3xl"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">
+                      Nouveaux
+                    </span>
+                  </button>  
+                  <div className="border-r border-gray-300 h-8"></div>
+                  {/* Séparateur vertical */}  
+                  <button
+  type="button"
+  className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
+  onClick={handleUpdateDevis}
+>
+  <FontAwesomeIcon
+    icon={faEdit}
+    className="text-yellow-600 text-3xl"
+  />
+  <span className="text-sm font-semibold text-gray-700">
+    Modifier
+  </span>
+</button>
 
-          <button
-            type="button"
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-            onClick={() => handleDevisNavigation(-1)} 
-          >
-            <FontAwesomeIcon icon={faArrowLeft} className="text-3xl" />
-          </button>
+                  <div className="border-r border-gray-300 h-8"></div>
+                  {/* Séparateur vertical */}
+                  <button
+                    type="button"
+                    onClick={removeLigne}
+                    className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon
+                      icon={faTrashAlt}
+                      className="text-red-600 text-3xl"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">
+                      Supprimer
+                    </span>
+                  </button>
+                  <div className="border-r border-gray-300 h-8"></div>
+                  {/* Séparateur vertical */}
+                  <button
+                    onClick={handleSearchClick}
+                    className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon
+                      icon={faSearch}
+                      className="text-blue-600 text-3xl"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">
+                      Rechercher
+                    </span>
+                  </button>
 
-          <button
-            type="button"
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-            onClick={() => handleDevisNavigation(1)} 
-          >
-            <FontAwesomeIcon icon={faArrowRight} className="text-3xl" />
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/DevisList")}
-            className="flex items-center text-gray-700 ml-4 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faList} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Liste</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="flex items-center text-gray-700 ml-4 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faSignOutAlt} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Quitter</span>
-          </button>
-        </>
-      ) : isNewMode ? (
-        <>
-          <button
-            type="button"
-            onClick={cancelNewMode}
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faTimes} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Annuler</span>
-          </button>
-          <div className="border-r border-gray-300 h-8"></div>
-   
-          <button
-            type="button"
-            onClick={validateNewMode}
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faCheck} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Valider</span>
-          </button>
-        </>
-      ) : isEditMode ? (
-        <>
-          <button
-            type="button"
-            onClick={cancelEditMode}
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faTimes} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Annuler</span>
-          </button>
-          <div className="border-r border-gray-300 h-8"></div>
-     
-          <button
-            type="button"
-            onClick={handleUpdateDevis}
-            className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-          >
-            <FontAwesomeIcon icon={faCheck} className="text-3xl" />
-            <span className="ml-2 text-sm font-semibold text-gray-700">Valider</span>
-          </button>
-        </> 
-      ) : null}
-    </div>
+                  <button
+                    type="button"
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                    onClick={() => handleDevisNavigation(-1)} // Navigation vers le devis précédent
+                  >
+                    <FontAwesomeIcon icon={faArrowLeft} className="text-3xl" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faArrowLeft} className="text-3xl" />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faArrowRight} className="text-3xl" />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                    onClick={() => handleDevisNavigation(1)} // Navigation vers le devis suivant
+                  >
+                    <FontAwesomeIcon icon={faArrowRight} className="text-3xl" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/DevisList")}
+                    className="flex items-center text-gray-700 ml-4 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faList} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Liste
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className="flex items-center text-gray-700 ml-4 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faSignOutAlt} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Quitter
+                    </span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={cancelNewMode}
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Annuler
+                    </span>
+                  </button>
+                  <div className="border-r border-gray-300 h-8"></div>
+                  {/* Séparateur vertical */}
+                  <button
+                    type="button"
+                    onClick={handleUpdateDevis }
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Valider
+                    </span>
+                  </button>
+                </>
+              )}
+            </div>
 
             <div className="flex justify-center space-x-8 flex-grow">
-   
+              {/* Les autres boutons qui ne changent pas */}
             </div>
 
             <div className="ml-auto flex items-center space-x-4">
@@ -1589,6 +1598,7 @@ const DevisForm = () => {
               </button>
             </div>
           </nav>
+
 
           <h2 className="text-black font-bold italic text-3xl">
             Devis / Facture Proforma
@@ -2260,7 +2270,8 @@ const DevisForm = () => {
                       />
                     </div>
                     <div className="flex space-x-4">
-                   <div className="flex-1">
+                      {/* Champ P.U.H.T */}
+                      <div className="flex-1">
                         <label className="block font-medium">P.U.H.T</label>
                         <input
                           type="text"
@@ -2277,7 +2288,7 @@ const DevisForm = () => {
                         />
                       </div>
 
-            
+                      {/* Champ Collisage */}
                       <div className="flex-1">
                         <label className="block font-medium">Collisage</label>
                         <input
@@ -2295,7 +2306,7 @@ const DevisForm = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2 justify-end">
-           
+                    {/* Bouton de validation */}
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -2312,7 +2323,7 @@ const DevisForm = () => {
                       <CheckIcon className="h-6 w-6" />
                     </button>
 
-          
+                    {/* Bouton de modification */}
                     <button
                       onClick={() => handleEdit(index)}
                       className="text-blue-500 p-2 border rounded-lg hover:bg-blue-100"
@@ -2321,7 +2332,7 @@ const DevisForm = () => {
                       <PencilIcon className="h-6 w-6" />
                     </button>
 
-                 
+                    {/* Bouton de suppression */}
                     <button
                       onClick={() => handleDelete(index)}
                       className="text-red-500 p-2 border rounded-lg hover:bg-red-100"
@@ -2355,7 +2366,7 @@ const DevisForm = () => {
                 <tbody>
                   {lignes.length > 0 &&
                     lignes
-                      .filter((ligne) => ligne.QteART && ligne.PUART)
+                      .filter((ligne) => ligne.QteART && ligne.PUART) // Filtrer les lignes vides
                       .map((ligne, index) => {
                         const quantite = parseFloat(ligne.QteART) || 0;
                         const prix1 = parseFloat(ligne.PUART) || 0;
@@ -2406,7 +2417,7 @@ const DevisForm = () => {
                       })}
                   {lignesValidees.length > 0 &&
                     lignesValidees
-                      .filter((ligne) => ligne.nbrunite && ligne.prix1)
+                      .filter((ligne) => ligne.nbrunite && ligne.prix1) // Filtrer les lignes valides vides
                       .map((ligne, idx) => (
                         <tr key={idx} className="border-b hover:bg-indigo-100">
                           <td className="border border-gray-300 p-2">

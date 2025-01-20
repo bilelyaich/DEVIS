@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Line } from "react-chartjs-2";
 
 import {
@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import Chart from "chart.js/auto";
+import axios from "axios";
 
 ChartJS.register(
   CategoryScale,
@@ -25,67 +25,108 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
-  const [devisData, setDevisData] = useState([]);
+  const [devisData, setDevisData] = useState([]); 
   const [totalDevis, setTotalDevis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDevisData = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/devis/devis-by-month"
+        const token = localStorage.getItem('token');
+        const selectedDatabase = localStorage.getItem('selectedDatabase');
+        
+        if (!token || !selectedDatabase) {
+          setError('Token ou base de données non définis.');
+          setLoading(false);
+          return;
+        }
+
+        const response = await axios.get(
+          `http://localhost:5000/api/devis/devis-count-by-month-and-year/${selectedDatabase}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
-        const data = await response.json();
-        setDevisData(data.data);
+
+        if (response.status === 200 && response.data.devisCountByMonthAndYear) {
+          setDevisData(response.data.devisCountByMonthAndYear);
+        }
       } catch (error) {
-        console.error("Erreur lors de la récupération des devis :", error);
+        console.error('Erreur lors de la récupération des devis:', error);
+        setError('Erreur lors de la récupération des devis.');
       } finally {
         setLoading(false);
       }
     };
+
     fetchDevisData();
   }, []);
 
   const chartData = {
-    labels: devisData.map((item) => item.mois),
+    labels: devisData.map((item) => `${item.month}/${item.year}`), 
     datasets: [
       {
-        label: "Nombre de Devis",
-        data: devisData.map((item) => item.nombreDevis),
-        borderColor: "rgba(75, 192, 192, 1)", // Couleur de la ligne
-        backgroundColor: "rgba(7, 8, 8, 0.2)", // Couleur de la surface remplie
-        fill: true, // Active le remplissage
-        tension: 0.4, // Rend la ligne légèrement courbée
+        label: 'Nombre de Devis',
+        data: devisData.map((item) => item.totalDevis),
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        fill: true,
+        tension: 0.4, 
       },
     ],
   };
 
-  const fetchTotalDevis = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/devis/total-devis"
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch total devis");
-      }
-      const data = await response.json();
-      setTotalDevis(data.totalDevis);
-      setLoading(false);
-    } catch (error) {
-      setError(error.message);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const selectedDatabase = localStorage.getItem("selectedDatabase");
+
+    if (!selectedDatabase) {
+      setError("Le nom de la base de données n'est pas défini");
+      setLoading(false);
+      return;
+    }
+
+    const fetchTotalDevis = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const response = await axios.get(
+          `http://localhost:5000/api/devis/${selectedDatabase}/devis/total`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.status === 200 && response.data) {
+          setTotalDevis(response.data.totalDevis);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des devis :", error);
+        setError("Erreur lors de la récupération des devis.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchTotalDevis();
-  }, []);
+  }, [navigate]);
+
+
+  
 
   return (
     <div className="flex h-screen">
       <aside className="w-64 bg-gray-800 text-white flex flex-col">
-        <div className="p-4 font-bold text-lg border-b border-gray-700">
+        <div className="p-4 font-bold text-lg border-b border-gray-700">  
           Gestion des Devis
         </div>
         <nav className="flex-1 p-4">
@@ -163,37 +204,6 @@ const Dashboard = () => {
                 <Line data={chartData} />
               )}
             </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-lg font-bold mb-4">Derniers Devis</h2>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-gray-500 text-sm">
-                  <th className="p-2">#</th>
-                  <th className="p-2">Client</th>
-                  <th className="p-2">Date</th>
-                  <th className="p-2">Montant</th>
-                  <th className="p-2">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t">
-                  <td className="p-2">001</td>
-                  <td className="p-2">Client A</td>
-                  <td className="p-2">12/12/2024</td>
-                  <td className="p-2">1200 €</td>
-                  <td className="p-2 text-green-500">Validé</td>
-                </tr>
-                <tr className="border-t">
-                  <td className="p-2">002</td>
-                  <td className="p-2">Client B</td>
-                  <td className="p-2">10/12/2024</td>
-                  <td className="p-2">800 €</td>
-                  <td className="p-2 text-yellow-500">En attente</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </main>
