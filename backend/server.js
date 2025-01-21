@@ -10,20 +10,19 @@ require("dotenv").config();
 const app = express();
 
 
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({ origin: [process.env.FRONTEND_URL, "http://localhost:3000"] }));
+
 app.use(express.json());
 app.use("/api/devis", devisRoutes);
 app.use("/api/devis", articleRoutes);
 app.use("/api/users", userRoutes);
 
 
-app.use(express.static(path.join(__dirname, "../frontend/build")));
 
 
 
-app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend/build/index.html"));
-}); 
+
+
 
 app.get("/", async (req, res) => {
   try {
