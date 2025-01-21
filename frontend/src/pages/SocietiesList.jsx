@@ -33,7 +33,7 @@ const SocietiesList = () => {
   
       // Sélectionner la base de données
       const response = await axios.post(
-        "http://localhost:5000/api/users/select-database",
+        `${process.env.REACT_APP_API_URL}/api/users/select-database`,
         { databaseName: society },
         {
           headers: {
@@ -41,6 +41,7 @@ const SocietiesList = () => {
           },
         }
       );
+      
   
       if (response.status === 200) {
         const devisList = response.data.devis; 

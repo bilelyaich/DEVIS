@@ -44,13 +44,14 @@ const Dashboard = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/api/devis/devis-count-by-month-and-year/${selectedDatabase}`,
+          `${process.env.REACT_APP_API_URL}/api/devis/devis-count-by-month-and-year/${selectedDatabase}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
+        
 
         if (response.status === 200 && response.data.devisCountByMonthAndYear) {
           setDevisData(response.data.devisCountByMonthAndYear);
@@ -98,13 +99,14 @@ const Dashboard = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/api/devis/${selectedDatabase}/devis/total`,
+          `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/devis/total`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
+        
 
         if (response.status === 200 && response.data) {
           setTotalDevis(response.data.totalDevis);

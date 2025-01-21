@@ -9,7 +9,8 @@ const DevisDetails = () => {
   useEffect(() => {
     const fetchDevisDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/devis/devis/${numbl}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/devis/devis/${numbl}`);
+
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération des détails du devis");
         }

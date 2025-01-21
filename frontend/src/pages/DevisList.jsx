@@ -27,8 +27,9 @@ const DevisList = () => {
         }
 
         const response = await fetch(
-          `http://localhost:5000/api/devis/${dbName}/devis/details`
+          `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/devis/details`
         );
+        
 
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération des devis");

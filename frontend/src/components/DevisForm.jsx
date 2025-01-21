@@ -74,6 +74,7 @@ const DevisForm = () => {
     netHtGlobal: "",
     taxe: "",
     timbre: "",
+    
     Av: {
       impot: "",
     },
@@ -194,8 +195,9 @@ const DevisForm = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/devis/${selectedDatabase}/clients`
-        );
+          `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/clients`
+      );
+      
         console.log("Clients récupérés:", response.data);
         if (response.data.clients && response.data.clients.length > 0) {
           setClients(response.data.clients);
@@ -219,9 +221,10 @@ const DevisForm = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/devis/${selectedDatabase}/familles`
-        );
-        console.log("Familles récupérées :", response.data);
+          `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/familles`
+      );
+      
+       console.log("Familles récupérées :", response.data);
 
         if (response.data.familles && response.data.familles.length > 0) {
           setFamilles(response.data.familles);
@@ -254,9 +257,9 @@ const DevisForm = () => {
 
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/devis/${selectedDatabase}/codes/famille/${famille}`
-      );
-
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/codes/famille/${famille}`
+    );
+    
       console.log("Réponse de l'API :", response.data);
 
       if (response.data.articles && response.data.articles.length > 0) {
@@ -294,9 +297,9 @@ const DevisForm = () => {
 
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/devis/${selectedDatabase}/articles/details/${code}`
-      );
-
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/details/${code}`
+    );
+    
       if (response.data.article) {
         const article = response.data.article;
         updatedLignes[index].libelle = article.libelle;
@@ -334,9 +337,10 @@ const DevisForm = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/devis/${selectedDatabase}/articles/${codeArt}/updateConfig`,
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/${codeArt}/updateConfig`,
         { codeart: codeArt, newConfigValue }
-      );
+    );
+    
 
       if (response.status === 200) {
         const updatedLignes = [...formData.lignes];
@@ -408,8 +412,9 @@ const DevisForm = () => {
 
     
           const response = await axios.get(
-            `http://localhost:5000/api/devis/${dbName}/clients/code/${selectedCode}`
-          );
+            `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/clients/code/${selectedCode}`
+        );
+        
           console.log("Clients récupérés:", response.data);
 
           const client = response.data.client;
@@ -449,8 +454,9 @@ const DevisForm = () => {
           }
 
           const response = await axios.get(
-            `http://localhost:5000/api/devis/${dbName}/clients/rsoc/${selectedRsoc}`
-          );
+            `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/clients/rsoc/${selectedRsoc}`
+        );
+        
           console.log("Client récupéré par raison sociale:", response.data);
           const client = response.data.client;
 
@@ -487,9 +493,9 @@ const DevisForm = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/api/devis/${dbName}/devis/libpv/${selectedDevis}`
-        );
-
+          `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/devis/libpv/${selectedDevis}`
+      );
+      
         console.log("Réponse API:", response.data);
         if (response.data && response.data.libpv) {
           setLibpvList([response.data.libpv]);
@@ -556,8 +562,9 @@ const DevisForm = () => {
       console.log("Date formatée envoyée à l'API:", formattedDate);
 
       const response = await fetch(
-        `http://localhost:5000/api/devis/${selectedDatabase}/last-numbl?datebl=${formattedDate}`
-      );
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/last-numbl?datebl=${formattedDate}`
+    );
+    
       const data = await response.json();
 
       if (response.ok) {
@@ -605,13 +612,14 @@ const DevisForm = () => {
       }
 
       const response = await axios.get(
-        `http://localhost:5000/api/users/get-devis-details/${database}`,
+        `${process.env.REACT_APP_API_URL}/api/users/get-devis-details/${database}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
         }
-      );
+    );
+    
 
       console.log("Réponse de l'API :", response);
 
@@ -646,13 +654,14 @@ const DevisForm = () => {
       });
 
       const response = await axios.get(
-        `http://localhost:5000/api/users/get-devis-details/${database}/${NUMBL}`,
+        `${process.env.REACT_APP_API_URL}/api/users/get-devis-details/${database}/${NUMBL}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
         }
-      );
+    );
+    
 
       if (response.status === 200) {
         const devisData = response.data.devis[0];
@@ -781,8 +790,9 @@ const DevisForm = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/api/devis/get-representant-details/${dbName}/${formData}`
-        );
+          `${process.env.REACT_APP_API_URL}/api/devis/get-representant-details/${dbName}/${formData}`
+      );
+      
 
         console.log("Réponse complète de l'API:", response);
 
@@ -1315,9 +1325,10 @@ const DevisForm = () => {
       }
 
       const response = await axios.post(
-        `http://localhost:5000/api/devis/${dbName}/create`,
+        `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/create`,
         dataToSend
-      );
+    );
+    
       console.log("Devis créé avec succès:", response.data);
 
       setFormData({
@@ -1421,15 +1432,15 @@ const DevisForm = () => {
 
       // Envoi de la requête PUT
       const response = await axios.put(
-        `http://localhost:5000/api/devis/${database}/${formData.NUMBL}`,
+        `${process.env.REACT_APP_API_URL}/api/devis/${database}/${formData.NUMBL}`,
         requestBody,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
         }
-      );
-
+    );
+    
       if (response.status === 200) {
         alert("Devis modifié avec succès !");
 
@@ -2548,7 +2559,7 @@ const DevisForm = () => {
                 </h2>
                 <p>
                   <strong>Numéro:</strong>
-                  {formData.numDevis}
+                  {formData.NUMBL}
                   <br />
                   <strong>Date:</strong> {formData.date}
                 </p>
@@ -2562,7 +2573,7 @@ const DevisForm = () => {
                 </p>
                 <p className="border p-2 text-sm">
                   <strong>CLIENT:</strong>
-                  {formData.codeClient}
+                  {formData.CODECLI}
                 </p>
                 <p className="border p-2 text-sm">
                   <strong>PAGE:</strong>
@@ -2761,7 +2772,7 @@ const DevisForm = () => {
                         Net HT Global:
                       </td>
                       <td className="border border-gray-300 px-2 py-1">
-                        {formData.netHtGlobal}
+                        {formData.totalHt}
                       </td>
                     </tr>
                     <tr>
@@ -2777,7 +2788,7 @@ const DevisForm = () => {
                         MT T.T.C:
                       </td>
                       <td className="border border-gray-300 px-2 py-1">
-                        {formData.montantTtc}
+                        {formData.MTTC}
                       </td>
                     </tr>
                     <tr>

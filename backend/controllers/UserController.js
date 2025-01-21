@@ -182,7 +182,7 @@ const getDevisDetails = async (req, res) => {
     if (!authHeader) {
       return res.status(401).json({ message: 'En-tête Authorization manquant.' });
     }
-
+ 
     const decoded = jwt.verify(authHeader.replace('Bearer ', ''), process.env.JWT_SECRET_KEY);
     const codeuser = decoded.codeuser; 
     const dbConnection = new Sequelize(`mysql://root:@127.0.0.1:3306/${databaseName}`, {

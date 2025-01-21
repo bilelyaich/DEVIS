@@ -35,7 +35,10 @@ const Recherche = () => {
     setError(''); 
     try {
       
-      const response = await fetch(`http://localhost:5000/api/devis/search/client/${selectedDatabase}/${searchValue}`);
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/devis/search/client/${selectedDatabase}/${searchValue}`
+      );
+      
       
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}: ${response.statusText}`);
