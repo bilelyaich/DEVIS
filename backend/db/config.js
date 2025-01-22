@@ -1,10 +1,13 @@
+// Importation de Sequelize et dotenv
 const { Sequelize } = require("sequelize");
+require('dotenv').config();  // Charge les variables d'environnement depuis le fichier .env
 
+// Configuration par défaut de la base de données
 const defaultDbConfig = {
-  username: "root",
-  password: "",
-  host: "127.0.0.1",
-  port: 3306,
+  username: process.env.DB_USER, 
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   logging: false,
   pool: {
     max: 5,
@@ -13,20 +16,44 @@ const defaultDbConfig = {
     idle: 10000,
   },
 };
-     
+
 
 const getSequelizeConnection = (dbName = "") => {
-  return new Sequelize(
-    dbName ? `mysql://root:@127.0.0.1:3306/${dbName}` : "mysql://root:@127.0.0.1:3306",
-    { ...defaultDbConfig, database: dbName || undefined }
-  );
+  
+  const passwordPart = process.env.DB_PASSWORD ? `:${process.env.DB_PASSWORD}` : "";
+
+  const connectionString = dbName 
+    ? `mysql://${process.env.DB_USER}${passwordPart}@${process.env.DB_HOST}:${process.env.DB_PORT}/${dbName}`
+    : `mysql://${process.env.DB_USER}${passwordPart}@${process.env.DB_HOST}:${process.env.DB_PORT}`;
+
+  
+
+  return new Sequelize(connectionString, { ...defaultDbConfig, database: dbName || undefined });
 };
 
 
-const sequelize = getSequelizeConnection();
+
+const sequelize = getSequelizeConnection();  
 
 
 const sequelizeUserERP = getSequelizeConnection("usererp");
+
+
+const testConnections = async () => {
+  try { 
+    await sequelize.authenticate();
+    console.log("Connexion réussie à la base de données principale.");
+    
+   
+    await sequelizeUserERP.authenticate();
+    console.log("Connexion réussie à la base de données usererp.");
+  } catch (error) {
+    console.error("Erreur lors de la connexion à l'une des bases de données :", error.message);
+  }
+};
+
+
+testConnections();
 
 
 const getDatabases = async () => {
@@ -47,7 +74,7 @@ const getDatabases = async () => {
   }
 };
 
-
+// Fonction pour se connecter à toutes les bases de données récupérées
 const connectToAllDatabases = async () => {
   const databases = await getDatabases();
 
@@ -60,7 +87,7 @@ const connectToAllDatabases = async () => {
     try {
       const dbConnection = getSequelizeConnection(dbName);
       await dbConnection.authenticate();
-      
+      console.log(`Connexion réussie à la base de données ${dbName}.`);
       await dbConnection.close();
     } catch (error) {
       console.error(`Erreur lors de la connexion à la base de données ${dbName} :`, error.message);
@@ -68,26 +95,10 @@ const connectToAllDatabases = async () => {
   }
 };
 
-
-const testConnections = async () => {
-  try {
-    await sequelize.authenticate();
-   
-
-    await sequelizeUserERP.authenticate();
-    console.log("Connexion réussie à la base de données usererp.");
-  } catch (error) {
-    console.error("Erreur lors de la connexion à l'une des bases de données :", error.message);
-  }
-};
-
-
-testConnections();
-
-
+// Connecter à toutes les bases de données
 connectToAllDatabases();
 
-
+// Exportation des objets Sequelize pour usage externe
 module.exports = {
   sequelize,
   sequelizeUserERP,

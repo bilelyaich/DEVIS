@@ -88,14 +88,31 @@ const DevisForm = () => {
 
   const navigate = useNavigate();
 
+  const handleEditDevis = (selectedDevis) => {
+    setFormData({
+      ...selectedDevis,
+      DATEBL: selectedDevis.DATEBL || new Date().toISOString().split("T")[0],
+      lignes: selectedDevis.lignes || [],
+    });
+  };
+  
   const handlePrint = () => {
     const printContent = document.getElementById("devis");
+    if (!printContent) {
+      console.error("Aucun contenu à imprimer.");
+      return;
+    }
+  
     const originalContent = document.body.innerHTML;
-
     document.body.innerHTML = printContent.outerHTML;
+  
     window.print();
+  
+    // Restaurer le contenu initial
     document.body.innerHTML = originalContent;
+    window.location.reload(); // Recharge la page pour éviter des comportements inattendus
   };
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -677,6 +694,7 @@ const DevisForm = () => {
         setFormData({
           ...formData,
           NUMBL: dfpDevis.NUMBL,
+          ADRCLI: dfpDevis.ADRCLI,
           CODECLI: dfpDevis.CODECLI,
           cp: dfpDevis.cp,
           email: dfpDevis.email || "",
@@ -1150,6 +1168,11 @@ const DevisForm = () => {
   }));
 
   function numberToText(number) {
+    if (number === undefined || number === null || isNaN(number)) {
+      console.error("Valeur invalide pour numberToText:", number);
+      return "Valeur invalide";
+    }
+  
     const units = [
       "",
       "un",
@@ -1192,7 +1215,7 @@ const DevisForm = () => {
       "huitante",
       "nonante",
     ];
-
+  
     const convertPart = (num) => {
       if (num < 20) return units[num];
       else if (num < 100) {
@@ -1205,17 +1228,18 @@ const DevisForm = () => {
         }`;
       }
     };
-
+  
     const [intPart, decPart] = number.toString().split(".");
     const intText = convertPart(Number(intPart));
-
+  
     if (decPart) {
       const decText = convertPart(Number(decPart));
       return `${intText} dinars et ${decText} millimes`;
     }
-
+  
     return `${intText} dinars`;
   }
+  
 
   const handleSearchClick = () => {
     navigate("/recherche");
@@ -1278,21 +1302,21 @@ const DevisForm = () => {
 
   const validateNewMode = async (event) => {
     event.preventDefault();
-
+  
     const savedLignes = localStorage.getItem("lignesValidees");
-
+  
     if (!savedLignes) {
       console.error("Aucun article trouvé dans le localStorage.");
       return;
     }
-
+  
     const lignes = JSON.parse(savedLignes);
-
+  
     if (!Array.isArray(lignes) || lignes.length === 0) {
       console.error("Les articles sont vides ou mal formatés.");
       return;
     }
-
+  
     const dataToSend = {
       NUMBL: formData.NUMBL,
       adresse: formData.adresse,
@@ -1316,36 +1340,40 @@ const DevisForm = () => {
         CONFIG: ligne.CONFIG,
       })),
     };
-
+  
     try {
       const dbName = localStorage.getItem("selectedDatabase");
       if (!dbName) {
         console.error("Aucune base de données sélectionnée.");
         return;
       }
-
+  
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/devis/${dbName}/create`,
         dataToSend
-    );
-    
-      console.log("Devis créé avec succès:", response.data);
-
+      );
+  
+      // Vérifiez ici si les données reçues contiennent ce dont vous avez besoin
+      console.log("Données reçues de l'API :", response.data);
+  
+      // Mettre à jour les données avec toutes les informations nécessaires
       setFormData({
-        NUMBL: response.data.NUMBL,
-        code: response.data.code,
-        lignes: Array.isArray(response.data.lignes) ? response.data.lignes : [],
+        NUMBL: response.data.NUMBL || "", // Vérification si le champ existe
+        code: response.data.code || "", // Vérification si le champ existe
+        RSOC: response.data.RSOC || "", // Ajout de RSOC si disponible
+        lignes: Array.isArray(response.data.lignes) ? response.data.lignes : [], // Gestion des lignes
       });
-
-      setIsNewMode(false);
-      setLignes([]);
-
-      localStorage.removeItem("lignesValidees");
+  
+      setIsNewMode(false); // Désactiver le mode création
+      setLignes([]); // Réinitialiser les lignes
+  
+      localStorage.removeItem("lignesValidees"); // Supprimer les lignes du localStorage
       console.log("Les lignes validées ont été supprimées du localStorage.");
     } catch (error) {
-      console.error("Erreur lors de la création du devis:", error);
+      console.error("Erreur lors de la création du devis :", error);
     }
   };
+  
 
   const handleUpdateDevis = async () => {
     try {
@@ -1654,28 +1682,31 @@ const DevisForm = () => {
                 <div className="grid grid-cols-2 gap-4">
                   {/* Champs informations client */}
                   <div>
-                    <label className="block font-medium">Code Client :</label>
-                    {isNewMode || formData.CODECLI === "" ? (
-                      <Select
-                        options={clientOptionsByCode}
-                        onChange={handleClientChange}
-                        value={clientOptionsByCode.find(
-                          (option) => option.value === formData.CODECLI
-                        )}
-                        placeholder="Sélectionner un client"
-                        isSearchable
-                        className="w-full"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        name="CODECLI"
-                        value={formData.CODECLI}
-                        readOnly
-                        className="w-full border border-gray-300 rounded-md p-2"
-                      />
-                    )}
-                  </div>
+  <label className="block font-medium">
+    {isNewMode || formData.CODECLI === "" ? "Code :" : "Code Client :"}
+  </label>
+  {isNewMode || formData.CODECLI === "" ? (
+    // En mode création, afficher un Select
+    <Select
+      options={clientOptionsByCode}
+      onChange={handleClientChange}
+      value={clientOptionsByCode.find((option) => option.value === formData.CODECLI)}
+      placeholder="Sélectionner un client"
+      isSearchable
+      className="w-full"
+    />
+  ) : (
+    // En mode affichage, afficher un input en lecture seule
+    <input
+      type="text"
+      name="CODECLI"
+      value={formData.CODECLI}
+      readOnly
+      className="w-full border border-gray-300 rounded-md p-2"
+    />
+  )}
+</div>
+
 
                   <div>
                     <label className="block font-medium">RSCLI :</label>
@@ -1714,8 +1745,8 @@ const DevisForm = () => {
                     ) : (
                       <input
                         type="text"
-                        name="adresse"
-                        value={formData.adresse}
+                        name="ADRCLI"
+                        value={formData.ADRCLI}
                         readOnly
                         className="w-full border border-gray-300 rounded-md p-2"
                       />
@@ -2591,7 +2622,7 @@ const DevisForm = () => {
                   <strong>Raison Sociale:</strong> {formData.rsoc}
                 </p>
                 <p className="border p-2 text-sm">
-                  <strong>Adresse:</strong> {formData.adresse}
+                  <strong>Adresse:</strong> {formData.ADRCLI}
                 </p>
                 <p className="border p-2 text-sm">
                   <strong>Code Postal:</strong> {formData.cp}
@@ -2804,7 +2835,7 @@ const DevisForm = () => {
                         Montant à Payer:
                       </td>
                       <td className="border border-gray-300 px-2 py-1 font-bold">
-                        {formData.aPayer}
+                        {formData.MTTC}
                       </td>
                     </tr>
                   </tbody>
