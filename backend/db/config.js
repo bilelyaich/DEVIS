@@ -1,8 +1,7 @@
-// Importation de Sequelize et dotenv
-const { Sequelize } = require("sequelize");
-require('dotenv').config();  // Charge les variables d'environnement depuis le fichier .env
 
-// Configuration par défaut de la base de données
+const { Sequelize } = require("sequelize");
+require('dotenv').config();  
+
 const defaultDbConfig = {
   username: process.env.DB_USER, 
   password: process.env.DB_PASSWORD,
@@ -74,13 +73,13 @@ const getDatabases = async () => {
   }
 };
 
-// Fonction pour se connecter à toutes les bases de données récupérées
+
 const connectToAllDatabases = async () => {
   const databases = await getDatabases();
 
   if (databases.length === 0) {
     console.log("Aucune base de données disponible.");
-    return;
+    return; 
   }
 
   for (const dbName of databases) {
@@ -95,10 +94,10 @@ const connectToAllDatabases = async () => {
   }
 };
 
-// Connecter à toutes les bases de données
+
 connectToAllDatabases();
 
-// Exportation des objets Sequelize pour usage externe
+
 module.exports = {
   sequelize,
   sequelizeUserERP,

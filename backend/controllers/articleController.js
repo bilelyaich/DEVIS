@@ -259,21 +259,34 @@ const updateConfig = async (req, res) => {
 };
 
 
-const getSearchResultsByClient = async (req, res) => {
-  const { dbName, searchTerm } = req.params;
+const getSearchResultsByClientOrNumbl = async (req, res) => {
+  const { dbName, searchType, searchTerm } = req.params;
 
-  if (!dbName || !searchTerm) {
+  // Vérification des paramètres
+  if (!dbName || !searchType || !searchTerm) {
     return res.status(400).json({
-      message: "Le nom de la base de données et le code client sont requis.",
+      message: "Le nom de la base de données, le type de recherche et le terme de recherche sont requis.",
     });
   }
 
   try {
- 
+    // Connexion à la base de données dynamique
     const dynamicSequelize = getSequelizeConnection(dbName);
     await dynamicSequelize.authenticate();
 
-  
+    // Construire la clause WHERE en fonction du type de recherche
+    let whereClause;
+    if (searchType === "client") {
+      whereClause = "dfp.CODECLI = :searchTerm";
+    } else if (searchType === "numbl") {
+      whereClause = "dfp.NUMBL = :searchTerm";
+    } else {
+      return res.status(400).json({
+        message: "Le type de recherche doit être 'client' ou 'numbl'.",
+      });
+    }
+
+    // Requête SQL avec la clause WHERE dynamique
     const query = `
       SELECT 
         dfp.NUMBL,
@@ -282,47 +295,46 @@ const getSearchResultsByClient = async (req, res) => {
         dfp.CODEFACTURE,
         dfp.CP,
         dfp.MTTC,
-        dfp.RSCLI,
+        dfp.rsoc,
         ldfp.CODEART,
         ldfp.DESART,
         ldfp.QTEART,
         ldfp.REMISE,
         ldfp.TAUXTVA
       FROM dfp
-      LEFT JOIN ldfp ON dfp.NUMBL = ldfp.NUMBL 
-      WHERE dfp.CODECLI = :codecli
+      LEFT JOIN ldfp ON dfp.NUMBL = ldfp.NUMBL
+      WHERE ${whereClause}
     `;
 
+    // Exécuter la requête
+// Exécuter la requête
+const results = await dynamicSequelize.query(query, {
+  replacements: { searchTerm }, // Injecter le terme de recherche dans la requête
+  type: dynamicSequelize.QueryTypes.SELECT,
+});
+
+// Vérifiez si "results" est un tableau
+if (!Array.isArray(results) || results.length === 0) {
+  return res.status(404).json({
+    message: "Aucun résultat trouvé pour les critères donnés.",
+  });
+}
+
+
     
-    const [results, metadata] = await dynamicSequelize.query(query, {
-      replacements: { codecli: searchTerm },  
-      type: dynamicSequelize.QueryTypes.SELECT, 
-    });
-    
-   
-    console.log("Type de 'results':", typeof results);  // 
-    console.log("Structure de 'results':", results);    
 
-   
-    const resultArray = Array.isArray(results) ? results : [results];  
-
-    if (resultArray.length === 0) {
-      return res.status(404).json({
-        message: "Aucun devis trouvé pour ce client.",
-      });
-    }
-
-   
+    // Formater les résultats
     return res.status(200).json({
       message: "Résultats récupérés avec succès.",
-      results: resultArray.map(result => ({
+      results: results.map(result => ({
+
         NUMBL: result.NUMBL,
         ADRCLI: result.ADRCLI,
         CODECLI: result.CODECLI,
         CODEFACTURE: result.CODEFACTURE,
         CP: result.CP,
         MTTC: result.MTTC,
-        RSCLI: result.RSCLI,
+        rsoc: result.rsoc,
         CODEART: result.CODEART,
         DESART: result.DESART,
         QTEART: result.QTEART,
@@ -330,15 +342,15 @@ const getSearchResultsByClient = async (req, res) => {
         TAUXTVA: result.TAUXTVA,
       })),
     });
-    
   } catch (error) {
-    console.error("Erreur lors de la récupération des résultats par client:", error);
+    console.error("Erreur lors de la récupération des résultats :", error);
     return res.status(500).json({
       message: "Erreur lors de la récupération des résultats.",
       error: error.message,
     });
   }
 };
+
 
 
 const getAllCodeCli = async (req, res) => {
@@ -455,7 +467,7 @@ module.exports = {
   getCodesByFamille,
   getArticleDetailsByCode,
   updateConfig,
-  getSearchResultsByClient,
+  getSearchResultsByClientOrNumbl,
   getAllCodeCli,
   getLastNumbl
 };

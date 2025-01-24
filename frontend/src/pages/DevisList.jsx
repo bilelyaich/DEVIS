@@ -12,7 +12,7 @@ const DevisList = () => {
     libpv: "",
     CODECLI: "",
     ADRCLI: "",
-    rsoc: "",
+    RSCLI: "",
     MTTC: "",
   });
   const [error, setError] = useState(null);
@@ -59,7 +59,7 @@ const DevisList = () => {
           (!filters.libpv || devisItem.client?.libpv?.includes(filters.libpv)) &&
           (!filters.CODECLI || devisItem.client?.CODECLI?.includes(filters.CODECLI)) &&
           (!filters.ADRCLI || devisItem.client?.ADRCLI?.includes(filters.ADRCLI)) &&
-          (!filters.rsoc || devisItem.client?.rsoc?.includes(filters.rsoc)) &&
+          (!filters.RSCLI || devisItem.client?.RSCLI?.includes(filters.RSCLI)) &&
           (!filters.MTTC || devisItem.client?.MTTC?.toString().includes(filters.MTTC))
         );
       });
@@ -162,7 +162,7 @@ const DevisList = () => {
                   {devisItem.client?.ADRCLI || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
-                  {devisItem.client?.rsoc || "N/A"}
+                  {devisItem.client?.RSCLI || "N/A"}
                 </td>
                 <td className="px-6 py-4 text-gray-700 border-b border-gray-300">
                   {devisItem.client?.MTTC || "N/A"} TND

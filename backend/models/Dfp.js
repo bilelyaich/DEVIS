@@ -39,7 +39,7 @@ const defineDfpModel = (sequelize) => {
         type: DataTypes.FLOAT,
         allowNull: true,
       },
-      rsoc: {
+      RSCLI: {
         type: DataTypes.STRING,
       },
       MHT: {
@@ -57,11 +57,18 @@ const defineDfpModel = (sequelize) => {
         type: DataTypes.STRING, 
         allowNull: true,
       },
+
+      mlettre: {
+        type: DataTypes.STRING,
+        allowNull: true,       
+      },
     },
     {
       tableName: "dfp",
       timestamps: false,
-    }
+    },
+
+ 
   );
 };
 

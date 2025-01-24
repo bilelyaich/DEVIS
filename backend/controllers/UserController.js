@@ -121,7 +121,7 @@ const selectDatabase = async (req, res) => {
 
     
     const decoded = jwt.verify(authHeader.replace('Bearer ', ''), process.env.JWT_SECRET_KEY);
-    const codeuser = decoded.codeuser; // Récupérer le codeuser du token
+    const codeuser = decoded.codeuser; 
 
    
     const dbConnection = new Sequelize(`mysql://root:@127.0.0.1:3306/${databaseName}`, {
@@ -196,7 +196,7 @@ const getDevisDetails = async (req, res) => {
   
     const [devisDetails, ldfpDetails] = await Promise.all([
       dbConnection.query(
-        `SELECT dfp.NUMBL, dfp.ADRCLI, dfp.CODECLI, dfp.cp , dfp.MTTC, dfp.MHT, dfp.CODEREP, dfp.RSREP ,dfp.comm ,dfp.rsoc, dfp.usera, dfp.DATEBL
+        `SELECT dfp.NUMBL, dfp.ADRCLI, dfp.CODECLI, dfp.cp , dfp.MTTC, dfp.MHT, dfp.CODEREP, dfp.RSREP ,dfp.comm ,dfp.RSCLI, dfp.usera, dfp.DATEBL
          FROM dfp
          WHERE dfp.NUMBL = :NUMBL AND dfp.usera = :codeuser`,
         {
@@ -302,7 +302,7 @@ const getLatestDevisByYear = async (req, res) => {
     const devisDetails = await Promise.all(
       latestDevis.map(async ({ year, numbl }) => {
         const dfpDetails = await dbConnection.query(
-          `SELECT dfp.numbl, dfp.adrcli, dfp.codecli, dfp.cp, dfp.rsoc, dfp.usera, dfp.DATEBL
+          `SELECT dfp.numbl, dfp.adrcli, dfp.codecli, dfp.cp, dfp.RSCLI, dfp.usera, dfp.DATEBL
            FROM dfp 
            WHERE numbl = :numbl`,
           {
@@ -346,14 +346,69 @@ const getLatestDevisByYear = async (req, res) => {
 
 
 
-module.exports = { 
-  
+const getAllClients = async (req, res) => {
+  const { databaseName } = req.params;
 
+  if (!databaseName) {
+    return res
+      .status(400)
+      .json({ message: 'Le nom de la base de données est requis.' });
+  }
+
+  try {
+    const authHeader = req.header('Authorization');
+    if (!authHeader) {
+      return res.status(401).json({ message: 'En-tête Authorization manquant.' });
+    }
+
+    const decoded = jwt.verify(authHeader.replace('Bearer ', ''), process.env.JWT_SECRET_KEY);
+    const codeuser = decoded.codeuser;
+
+    const dbConnection = new Sequelize(`mysql://root:@127.0.0.1:3306/${databaseName}`, {
+      dialect: 'mysql',
+      logging: false,
+      pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+    });
+
+    await dbConnection.authenticate();
+
+    // Récupérer tous les clients
+    const clients = await dbConnection.query(
+      `SELECT 
+         ADRCLI, 
+         CODECLI, 
+         CODEFACTURE, 
+         CP, 
+         RSCLI, 
+         comm
+       FROM dfp
+       WHERE usera = :codeuser`,
+      {
+        replacements: { codeuser },
+        type: dbConnection.QueryTypes.SELECT,
+      }
+    );
+
+    if (clients.length === 0) {
+      return res.status(404).json({ message: 'Aucun client trouvé pour cet utilisateur.' });
+    }
+
+    res.status(200).json({
+      message: 'Liste des clients récupérée avec succès.',
+      databaseName,
+      clients,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des clients :', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des clients.' });
+  }
+};
+
+module.exports = { 
   registerUser,
   loginUser,
   selectDatabase,
   getDevisDetails,
-  getLatestDevisByYear
-  
-  
+  getLatestDevisByYear,
+  getAllClients, 
 };

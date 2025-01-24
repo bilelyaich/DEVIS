@@ -239,7 +239,7 @@ const formatDevisData = (result) => {
           CODECLI: item["client.CODECLI"] || null,
           DATEBL: item["client.DATEBL"] || null,
           CP: item["client.CP"] || null,
-          rsoc: item["client.rsoc"] || null,
+          RSCLI: item["client.RSCLI"] || null,
           MTTC: item["client.MTTC"] || null,
         },
         articles: [],
@@ -286,7 +286,7 @@ const getDevisWithDetails = async (req, res) => {
         Devis.ADRCLI AS "client.ADRCLI", 
         Devis.CODECLI AS "client.CODECLI", 
         Devis.CP AS "client.CP", 
-        Devis.rsoc AS "client.rsoc", 
+        Devis.RSCLI AS "client.RSCLI", 
         Devis.MTTC AS "client.MTTC",
          Devis.DATEBL AS "client.DATEBL",
 
@@ -453,14 +453,18 @@ const createDevis = async (req, res) => {
   const {
     NUMBL,
     libpv,
-    adresse, 
+    adresse,
     code,
+    cp,
     DATEBL,
     MREMISE,
     MTTC,
     comm,
     RSREP,
     CODEREP,
+    usera,
+    rsoc,
+    MHT,
     articles,
   } = req.body;
 
@@ -468,20 +472,15 @@ const createDevis = async (req, res) => {
   console.log("Code client reçu:", code);  
   console.log("Articles reçus :", articles);
 
- 
-  if (!NUMBL || NUMBL.trim() === '') {
+  if (!NUMBL || NUMBL.trim() === "") {
     return res.status(400).json({ message: "Le champ NUMBL est manquant." });
   }
-  if (!code || code.trim() === '') {
+  if (!code || code.trim() === "") {
     return res.status(400).json({ message: "Le code client est manquant." });
   }
-
- 
-  if (!adresse || adresse.trim() === '') {
+  if (!adresse || adresse.trim() === "") {
     return res.status(400).json({ message: "L'adresse du client est manquante ou vide." });
   }
-
- 
   if (!Array.isArray(articles)) {
     return res.status(400).json({ message: "Le champ 'articles' doit être un tableau." });
   }
@@ -494,7 +493,7 @@ const createDevis = async (req, res) => {
     const Ldfp = defineLdfpModel(dynamicSequelize);
     const Client = defineClientModel(dynamicSequelize);
 
-  
+    // Vérification de l'existence du devis
     const existingDevis = await Dfp.findOne({ where: { NUMBL } });
     if (existingDevis) {
       return res.status(400).json({
@@ -502,16 +501,15 @@ const createDevis = async (req, res) => {
       });
     }
 
-  
+    // Récupération des données du client
     const client = await Client.findOne({ where: { code } });
     if (!client) {
       return res.status(404).json({ message: "Client non trouvé." });
     }
 
-   
     console.log("Données du client récupérées :", client);
 
-    const clientAdresse = client.adresse && client.adresse.trim() !== '' ? client.adresse : adresse;
+    const clientAdresse = client.adresse && client.adresse.trim() !== "" ? client.adresse : adresse;
 
     if (!clientAdresse || clientAdresse.trim() === "") {
       return res.status(400).json({
@@ -519,9 +517,14 @@ const createDevis = async (req, res) => {
       });
     }
 
-   
     const transaction = await dynamicSequelize.transaction();
 
+    // Génération automatique de la chaîne "Devis En Cours -- crée le : ..."
+    const creationDate = new Date();
+    const formattedDate = creationDate.toISOString().split("T")[0]; // Format AAAA-MM-JJ
+    const mlettre = `Devis En Cours -- crée le : ${formattedDate} / par : ${usera || "N/A"}`;
+
+    // Préparation des données pour le devis
     const dfpData = {
       NUMBL,
       libpv,
@@ -532,18 +535,21 @@ const createDevis = async (req, res) => {
       MTTC,
       RSREP,
       CODEREP,
-      CP: client.cp,
+      MHT,
+      CP: client.cp, // Ajout explicite du champ CP
       comm,
-      rsoc: client.rsoc,
+      RSCLI: client.rsoc,
+      MLETTRE: mlettre, // Stockage de la chaîne dans le champ MLETTRE
     };
+    
 
+    // Création du devis dans la table "dfp"
     const devis = await Dfp.create(dfpData, { transaction });
 
     const insertedArticles = [];
 
-   
+    // Ajout des articles associés au devis
     for (const article of articles) {
-     
       if (!article.code || !article.libelle || !article.nbrunite || !article.prix1 || !article.tauxtva) {
         await transaction.rollback();
         return res.status(400).json({
@@ -559,9 +565,9 @@ const createDevis = async (req, res) => {
         PUART: article.prix1,
         Remise: article.Remise,
         TauxTVA: article.tauxtva,
-        Unite: article.unite || 'unité',
-        Conf: article.CONFIG || '',
-        famille: article.famille || '',
+        Unite: article.unite || "unité",
+        Conf: article.CONFIG || "",
+        famille: article.famille || "",
         nbun: article.nbrunite,
       };
 
@@ -575,8 +581,8 @@ const createDevis = async (req, res) => {
       message: "Devis créé avec succès.",
       devis,
       articles: insertedArticles,
+      mlettre, // Renvoi de la chaîne générée dans la réponse
     });
-
   } catch (error) {
     console.error("Erreur lors de la création du devis :", error);
     return res.status(500).json({
@@ -585,7 +591,6 @@ const createDevis = async (req, res) => {
     });
   }
 };
-
 
 
 const updateDevis = async (req, res) => {
