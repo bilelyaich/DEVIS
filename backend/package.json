@@ -11,6 +11,11 @@
     "client": "cd ../frontend && npm start",
     "dev": "concurrently -n 'server,client' -c 'red,green' \"npm run start\" \"npm run client\""
   },
+
+  "engines": {
+  "node": "18.x"
+},
+
   "keywords": [],
   "author": "",
   "license": "ISC",
