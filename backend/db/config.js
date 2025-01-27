@@ -86,7 +86,7 @@ const connectToAllDatabases = async () => {
     try {
       const dbConnection = getSequelizeConnection(dbName);
       await dbConnection.authenticate();
-      console.log(`Connexion réussie à la base de données ${dbName}.`);
+     
       await dbConnection.close();
     } catch (error) {
       console.error(`Erreur lors de la connexion à la base de données ${dbName} :`, error.message);

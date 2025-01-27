@@ -54,6 +54,8 @@ const DevisForm = () => {
     numPage: 1,
     commentaire: "",
     transport: "",
+    codesec: "",
+    desisec: "",
     delaiLivraison: "",
     lignes: [
       {
@@ -149,7 +151,7 @@ const DevisForm = () => {
   const [activeConfigIndex, setActiveConfigIndex] = useState(null);
   const [messages, setMessages] = useState({});
   const [selectedDatabase, setSelectedDatabase] = useState(
-    localStorage.getItem("selectedDatabase")
+localStorage.getItem("selectedDatabase")
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -170,6 +172,12 @@ const DevisForm = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const location = useLocation();
   const [mlettreMessage, setMlettreMessage] = useState("");
+  const [secteurs, setSecteurs] = useState([]);
+  const [databaseName, setDatabaseName] = useState(""); 
+  
+  
+
+
 
   useEffect(() => {
     const locationFormData =
@@ -441,7 +449,7 @@ const DevisForm = () => {
           if (client) {
             setFormData((prevData) => ({
               ...prevData,
-              rsoc: client.rsoc,
+              RSCLI: client.rsoc,
               adresse: client.adresse,
               cp: client.cp,
               email: client.email,
@@ -483,7 +491,7 @@ const DevisForm = () => {
           if (client) {
             setFormData((prevData) => ({
               ...prevData,
-              code: client.code,
+              CODECLI: client.code,
               adresse: client.adresse,
               cp: client.cp,
               email: client.email,
@@ -667,7 +675,7 @@ const DevisForm = () => {
 
       setFormData({
         ...formData,
-        lignes: [], // Réinitialisation des lignes au début de l'appel
+        lignes: [], 
       });
 
       const response = await axios.get(
@@ -746,17 +754,25 @@ const DevisForm = () => {
   useEffect(() => {
     const selectedDatabase = localStorage.getItem("selectedDatabase");
     const selectedNumbl = localStorage.getItem("selectedDevisNumbl");
+
     if (!selectedDatabase) {
       setError("Base de données introuvable.");
       return;
     }
 
     if (selectedNumbl) {
-      fetchDevisDetails(selectedDatabase, selectedNumbl);
+      // Trouver l'index du devis sélectionné dans la liste des devis
+      const index = devisList.findIndex((devis) => devis.numbl.trim() === selectedNumbl.trim());
+      if (index !== -1) {
+        setSelectedDevisIndex(index); // Mettre à jour l'index sélectionné
+      }
+
+      fetchDevisDetails(selectedDatabase, selectedNumbl); // Charger les détails du devis
     } else {
       setError("Numéro de devis introuvable.");
     }
-  }, []);
+  }, [devisList]);
+
 
   const handleDevisChange = (selectedOption) => {
     if (selectedOption) {
@@ -870,6 +886,29 @@ const DevisForm = () => {
     }
   };
 
+  const calculateTotalDiscount = () => {
+    let totalRemise = 0;
+    lignes.forEach((ligne) => {
+      const remise = parseFloat(ligne.Remise) || 0;
+      const quantite = parseFloat(ligne.QteART) || 0;
+      const prix1 = parseFloat(ligne.PUART) || 0;
+      totalRemise += (remise / 100) * quantite * prix1; 
+    });
+    return totalRemise;
+  };
+
+
+  
+
+  useEffect(() => {
+   
+    const totalRemise = calculateTotalDiscount();
+    setFormData({
+      ...formData,
+      Remise: totalRemise.toFixed(2), 
+    });
+  }, [lignes]);
+
   const handleLigneChange = (index, field, value) => {
     const newLignes = [...formData.lignes];
     newLignes[index][field] = value;
@@ -965,6 +1004,7 @@ const DevisForm = () => {
   const addLigne = () => {
     setIsNewMode(true);
     setInitialFormData(formData);
+    
 
     setFormData({
       ...formData,
@@ -1011,6 +1051,8 @@ const DevisForm = () => {
         isVisible: true,
       },
     ]);
+    localStorage.removeItem("lignesValidees");
+    console.log("Nouveau devis prêt. Les lignes précédentes ont été supprimées.");
   };
 
   const removeLigne = (index) => {
@@ -1319,6 +1361,7 @@ const DevisForm = () => {
       RSREP: formData.RSREP,
       CODEREP: formData.CODEREP,
       rsoc: formData.rsoc,
+      
       articles: lignes.map((ligne) => ({
         code: ligne.code,
         libelle: ligne.libelle,
@@ -1377,84 +1420,62 @@ const DevisForm = () => {
     try {
       const token = localStorage.getItem("token");
       const database = localStorage.getItem("selectedDatabase");
-
+  
       if (!token) {
         setError("Utilisateur non authentifié.");
         return;
       }
-
+  
       if (!database) {
         setError("Aucune base de données sélectionnée.");
         return;
       }
-
+  
       if (!formData || !formData.NUMBL) {
         setError("Les données du formulaire sont incomplètes.");
         return;
       }
-
+  
+      if (!formData.CODECLI) {
+        setError("Le code client est manquant.");
+        return;
+      }
+  
       const savedLignes = localStorage.getItem("lignesValidees");
       if (!savedLignes) {
-        console.error("Aucun article trouvé dans le localStorage.");
+        setError("Aucun article trouvé dans le localStorage.");
         return;
       }
-
-      const lignes = JSON.parse(savedLignes);
-
-      if (!Array.isArray(lignes) || lignes.length === 0) {
-        console.error("Les articles sont vides ou mal formatés.");
-        return;
-      }
-
-      const formattedLignes = lignes.map((ligne) => ({
-        CodeART: ligne.code || "",
-        DesART: ligne.libelle || "",
-        QteART: ligne.nbrunite || 0,
-        PUART: ligne.prix1 || 0,
-        Remise: ligne.Remise || 0,
-        TauxTVA: ligne.tauxtva || 0,
-        Unite: ligne.unite || "",
-        Conf: ligne.CONFIG || "",
-        famille: ligne.famille || "",
-        nbun: ligne.nbrunite || 0,
+  
+      const lignesExistantes = JSON.parse(savedLignes);
+  
+      const newLignes = []; // Supposons qu'il n'y a pas de nouvelles lignes pour le moment
+  
+      const allLignes = [...lignesExistantes, ...newLignes];
+  
+      const formattedLignes = allLignes.map((ligne) => ({
+        CodeART: ligne.CodeART || ligne.code || "",
+        DesART: ligne.DesART || ligne.libelle || "",
+        QteART: ligne.QteART || ligne.nbrunite || 0,
+        PUART: ligne.PUART || ligne.prix1 || 0,
+        Remise: ligne.Remise || ligne.remise || 0,
+        TauxTVA: ligne.TauxTVA || ligne.tauxtva || 0,
+        Unite: ligne.Unite || ligne.unite || "",
+        Conf: ligne.Conf || ligne.CONFIG || "",
+        Famille: ligne.Famille || ligne.famille || "",
+        MTTC: ligne.MTTC || ligne.montantTTC || "",
       }));
-
-      setIsNewMode(true);
-
-      const newLigne = {
-        CodeART: "",
-        DesART: "",
-        QteART: 0,
-        PUART: 0,
-        Remise: 0,
-        TauxTVA: 0,
-        Unite: "",
-        Conf: "",
-        famille: "",
-        nbun: 0,
-        isVisible: true,
-      };
-
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        lignes: [newLigne, ...prevFormData.lignes],
-      }));
-
+  
+      console.log("Lignes formatées :", formattedLignes);
+  
       const requestBody = {
         NUMBL: formData.NUMBL || "",
         code: formData.CODECLI || "",
-        rsoc: formData.rsoc || "",
         articles: formattedLignes,
-        MREMISE: formData.MREMISE || 0,
-        MTTC: formData.MTTC || 0,
-
-        CODEREP: formData.CODEREP || "",
-        RSREP: formData.RSREP || "",
-        comm: formData.comm || "",
       };
-
-      console.log("Données envoyées :", requestBody);
-
+  
+      console.log("Données envoyées :", JSON.stringify(requestBody, null, 2));
+  
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/api/devis/${database}/${formData.NUMBL}`,
         requestBody,
@@ -1464,21 +1485,103 @@ const DevisForm = () => {
           },
         }
       );
-
+  
       if (response.status === 200) {
         alert("Devis modifié avec succès !");
-
+        localStorage.setItem("lignesValidees", JSON.stringify(allLignes));
         setIsNewMode(true);
+        navigate("/devis-form");
       } else {
-        setError(
-          response.data.message || "Erreur lors de la modification du devis."
-        );
+        setError(response.data.message || "Erreur lors de la modification du devis.");
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à l'API :", error);
-      setError("Erreur serveur lors de la modification du devis.");
+  
+      if (error.response && error.response.data && error.response.data.message) {
+        setError(`Erreur serveur : ${error.response.data.message}`);
+      } else {
+        setError("Erreur serveur lors de la modification du devis.");
+      }
     }
   };
+  
+
+ const handleeditligneDevis = async () => {
+
+ 
+  setIsNewMode(false);
+  setIsEditMode(true);
+
+  const newLigne = {
+    CodeART: "",
+    DesART: "",
+    QteART: 0,
+    PUART: 0,
+    Remise: 0,
+    TauxTVA: 0,
+    Unite: "",
+    Conf: "",
+    famille: "",
+    nbun: 0,
+    isVisible: true,
+  };
+
+  setFormData((prevFormData) => ({
+    ...prevFormData,
+    lignes: [newLigne, ...prevFormData.lignes],
+  }));
+
+ }
+
+
+
+
+
+  const fetchSecteurs = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/users/secteurs/ERP13`
+      );
+      const data = await response.json();
+      if (data && Array.isArray(data.sectors)) {
+        setSecteurs(data.sectors);
+      } else {
+        console.error("Les secteurs ne sont pas disponibles.");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des secteurs:", error);
+    }
+  };
+
+  
+  useEffect(() => {
+    fetchSecteurs();
+  }, []);
+
+
+  const handleCodeSecteurChange = (event) => {
+    const selectedCode = event.target.value;
+
+   
+    const secteur = secteurs.find((secteur) => secteur.codesec === selectedCode);
+
+  
+    if (secteur) {
+      setFormData({
+        ...formData,
+        codesec: secteur.codesec,
+        desisec: secteur.desisec, 
+      });
+    } else {
+      setFormData({
+        ...formData,
+        codesec: selectedCode,
+        desisec: "",
+      });
+    }
+  };
+
+  
 
   return (
     <div>
@@ -1512,7 +1615,7 @@ const DevisForm = () => {
                   <button
                     type="button"
                     className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-                    onClick={handleUpdateDevis}
+                    onClick={handleeditligneDevis}
                   >
                     <FontAwesomeIcon
                       icon={faEdit}
@@ -1732,8 +1835,11 @@ const DevisForm = () => {
                         type="text"
                         name="CODECLI"
                         value={formData.CODECLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, CODECLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1760,11 +1866,15 @@ const DevisForm = () => {
                         type="text"
                         name="RSCLI"
                         value={formData.RSCLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, RSCLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
+
 
                   <div>
                     <label className="block font-medium">Adresse :</label>
@@ -1781,8 +1891,11 @@ const DevisForm = () => {
                         type="text"
                         name="ADRCLI"
                         value={formData.ADRCLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, ADRCLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1802,8 +1915,11 @@ const DevisForm = () => {
                         type="text"
                         name="cp"
                         value={formData.cp}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, cp: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1823,8 +1939,11 @@ const DevisForm = () => {
                         type="email"
                         name="email"
                         value={formData.email}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1844,8 +1963,11 @@ const DevisForm = () => {
                         type="text"
                         name="tel1"
                         value={formData.tel1}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, tel1: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1942,107 +2064,158 @@ const DevisForm = () => {
             </div>
 
             <div className="space-y-4 p-4 border rounded-md">
-              <h3 className="text-lg font-bold mb-4 flex items-center space-x-2">
-                <Edit className="text-black" />
-                <span>Informations de l'Utilisateur</span>
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2 col-span-1">
-                  <div className="w-full">
-                    <label className="block font-medium">Vendeur :</label>
-                    {isNewMode ? (
-                      <Select
-                        options={representantsOptions}
-                        onChange={handleVendeurChange}
-                        value={representantsOptions.find(
-                          (option) => option.value === formData.CODEREP
-                        )}
-                        placeholder="Sélectionner un vendeur"
-                        isSearchable
-                        className="w-full rounded-md p-2"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        name="coderep"
-                        value={formData.CODEREP || "Aucun vendeur défini"}
-                        readOnly
-                        className="w-full border border-gray-300 rounded-md p-2"
-                      />
-                    )}
-                  </div>
-                </div>
+  <h3 className="text-lg font-bold mb-4 flex items-center space-x-2">
+    <Edit className="text-black" />
+    <span>Informations de l'Utilisateur</span>
+  </h3>
+  
+  {/* Grid Layout with two columns */}
+  <div className="grid grid-cols-2 gap-4">
+    {/* Champ Vendeur */}
+    <div className="flex items-center space-x-2">
+      <div className="w-full">
+        <label className="block text-lg font-medium">Vendeur :</label>
+        {isNewMode ? (
+          <Select
+            options={representantsOptions}
+            onChange={handleVendeurChange}
+            value={representantsOptions.find(
+              (option) => option.value === formData.CODEREP
+            )}
+            placeholder="Sélectionner un vendeur"
+            isSearchable
+            className="w-full rounded-md p-2"
+          />
+        ) : (
+          <input
+            type="text"
+            name="coderep"
+            value={formData.CODEREP || ""}
+            readOnly={!isEditMode} 
+            className="w-full border border-gray-300 rounded-md p-2"
+            onChange={(e) =>
+              setFormData({ ...formData, CODEREP: e.target.value }) // Mettre à jour formData
+            }
+          />
+        )}
+      </div>
+    </div>
 
-                <div className="flex items-center space-x-2 col-span-1">
-                  <div className="w-full">
-                    <label className="block font-medium">RSREP</label>
-                    {formData.numbl ? (
-                      <input
-                        type="text"
-                        name="RSREP"
-                        value={formData.RSREP || ""}
-                        readOnly
-                        className="w-full border border-gray-300 rounded-md p-2"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        name="RSREP"
-                        value={formData.RSREP || ""}
-                        readOnly
-                        className="w-full border border-gray-300 rounded-md p-2"
-                      />
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 col-span-1">
-                  <div className="w-full">
-                    <label className="block font-medium">Secteur :</label>
-                    <input
-                      type="text"
-                      name="secteur"
-                      value={formData.secteur}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-md p-2"
-                    />
-                  </div>
-                </div>
-              </div>
+    {/* Champ RSREP */}
+    <div className="flex items-center space-x-2">
+      <div className="w-full">
+        <label className="block text-lg font-medium">RSREP</label>
+        <input
+          type="text"
+          name="RSREP"
+          value={formData.RSREP || ""}
+          readOnly={!isEditMode} 
+          className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, RSREP: e.target.value }) // Mettre à jour formData
+          }
+        />
+      </div>
+    </div>
+  </div>
 
-              <div className="mt-4">
-                <label className="block font-medium">Commentaire :</label>
-                {isNewMode || (formData.numbl && formData.comm === "") ? (
-                  <textarea
-                    name="comm"
-                    value={formData.comm || ""}
-                    onChange={handleChange}
-                    rows="3"
-                    className="w-full border border-gray-300 rounded-md p-2"
-                  />
-                ) : (
-                  <textarea
-                    name="comm"
-                    value={formData.comm || ""}
-                    readOnly
-                    rows="3"
-                    className="w-full border border-gray-300 rounded-md p-2"
-                  />
-                )}
-              </div>
+  {/* Champs Code Secteur et Désignation Secteur */}
+  <div className="grid grid-cols-2 gap-4 mt-4">
+  {/* Champ Code Secteur */}
+  <div className="flex items-center space-x-2">
+    <div className="w-full">
+      <label className="block text-lg font-medium">Code Secteur</label>
+      {isNewMode ? (
+        <select
+          name="codesec"
+          value={formData.codesec || ""}
+          onChange={handleCodeSecteurChange}
+          className="w-full border border-gray-300 rounded-md p-2"
+        >
+          <option value="">Sélectionner un secteur</option>
+          {secteurs.length > 0 ? (
+            secteurs.map((secteur) => (
+              <option key={secteur.codesec} value={secteur.codesec}>
+                {secteur.codesec}
+              </option>
+            ))
+          ) : (
+            <option disabled></option>
+          )}
+        </select>
+      ) : (
+        <input
+          type="text"
+          name="codesec"
+          value={formData.codesec || ""}
+          readOnly={!isEditMode} 
+          className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, codesec: e.target.value }) // Mettre à jour formData
+          }
+        />
+      )}
+    </div>
+  </div>
 
-              <div className="w-full mt-4">
-                <label className="block font-medium">Affaire :</label>
-                <input
-                  type="text"
-                  name="affaire"
-                  value={formData.affaire}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md p-2"
-                />
-              </div>
-            </div>
-          </div>
 
+
+    {/* Champ Désignation Secteur */}
+    <div className="flex items-center space-x-2">
+      <div className="w-full">
+        <label className="block text-lg font-medium">Désignation Secteur</label>
+        <input
+          type="text"
+          name="desisec"
+          value={formData.desisec || ""}
+          readOnly={!isEditMode} 
+          className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, desisec: e.target.value }) // Mettre à jour formData
+          }
+        />
+      </div>
+    </div>
+  </div>
+  
+  {/* Commentaire et Affaire */}
+  <div className="mt-4">
+    <label className="block text-lg font-medium">Commentaire :</label>
+    {isNewMode || (formData.numbl && formData.comm === "") ? (
+      <textarea
+        name="comm"
+        value={formData.comm || ""}
+        onChange={handleChange}
+        rows="3"
+        className="w-full border border-gray-300 rounded-md p-2"
+      />
+    ) : (
+      <textarea
+        name="comm"
+        value={formData.comm || ""}
+        
+        rows="2"
+        readOnly={!isEditMode} 
+          className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, comm: e.target.value }) // Mettre à jour formData
+          }
+        />
+    )}
+  </div>
+
+  <div className="w-full mt-4">
+    <label className="block text-lg font-medium">Affaire :</label>
+    <input
+      type="text"
+      name="affaire" 
+      value={formData.affaire}
+      onChange={handleChange}
+      className="w-full border border-gray-300 rounded-md p-2"
+    />
+  </div>
+</div>
+</div>
           {formData.lignes.map((ligne, index) => (
             <div
               key={ligne.id}
@@ -2407,75 +2580,76 @@ const DevisForm = () => {
             </div>
           ))}
 
-          <div className="flex flex-col min-h-screen">
-            <div className="overflow-x-auto flex-grow">
-              <table className="table-auto w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border border-gray-300 p-2">Famille</th>
-                    <th className="border border-gray-300 p-2">Code Article</th>
-                    <th className="border border-gray-300 p-2">Libelle</th>
-                    <th className="border border-gray-300 p-2">Unité</th>
-                    <th className="border border-gray-300 p-2">Quantité</th>
-                    <th className="border border-gray-300 p-2">Remise</th>
-                    <th className="border border-gray-300 p-2">TVA</th>
-                    <th className="border border-gray-300 p-2">PUHT</th>
-                    <th className="border border-gray-300 p-2">PUTTC</th>
-                    <th className="border border-gray-300 p-2">NET HT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lignes.length > 0 &&
-                    lignes
-                      .filter((ligne) => ligne.QteART && ligne.PUART)
-                      .map((ligne, index) => {
-                        const quantite = parseFloat(ligne.QteART) || 0;
-                        const prix1 = parseFloat(ligne.PUART) || 0;
-                        const remise = parseFloat(ligne.Remise) || 0;
-                        const tauxtva = parseFloat(ligne.TauxTVA) || 0;
+<div className="flex flex-col min-h-screen">
+        <div className="overflow-x-auto flex-grow">
+          <table className="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                {/* En-têtes du tableau */}
+                <th className="border border-gray-300 p-2">Famille</th>
+                <th className="border border-gray-300 p-2">Code Article</th>
+                <th className="border border-gray-300 p-2">Libelle</th>
+                <th className="border border-gray-300 p-2">Unité</th>
+                <th className="border border-gray-300 p-2">Quantité</th>
+                <th className="border border-gray-300 p-2">Remise</th>
+                <th className="border border-gray-300 p-2">TVA</th>
+                <th className="border border-gray-300 p-2">PUHT</th>
+                <th className="border border-gray-300 p-2">PUTTC</th>
+                <th className="border border-gray-300 p-2">NET HT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lignes.length > 0 &&
+                lignes
+                  .filter((ligne) => ligne.QteART && ligne.PUART)
+                  .map((ligne, index) => {
+                    const quantite = parseFloat(ligne.QteART) || 0;
+                    const prix1 = parseFloat(ligne.PUART) || 0;
+                    const remise = parseFloat(ligne.Remise) || 0;
+                    const tauxtva = parseFloat(ligne.TauxTVA) || 0;
 
-                        const netHt =
-                          quantite && prix1
-                            ? quantite * prix1 * (1 - remise / 100)
-                            : 0;
-                        const puttc =
-                          prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
+                    const netHt =
+                      quantite && prix1
+                        ? quantite * prix1 * (1 - remise / 100)
+                        : 0;
+                    const puttc =
+                      prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
 
-                        return (
-                          <tr key={index}>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.famille || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.CodeART || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.DesART || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.Unite || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {quantite || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {remise !== 0 ? `${remise}%` : ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {tauxtva || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {prix1 || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {puttc || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {netHt || ""}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                    return (
+                      <tr key={index}>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.famille || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.CodeART || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.DesART || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.Unite || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {quantite || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {remise !== 0 ? `${remise}%` : ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {tauxtva || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {prix1 || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {puttc || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {netHt || ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {lignesValidees.length > 0 &&
                     lignesValidees
                       .filter((ligne) => ligne.nbrunite && ligne.prix1)
@@ -2716,15 +2890,15 @@ const DevisForm = () => {
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-sm">
                         {ligne.Remise}
-                      </td> 
+                      </td>
                       <td className="border border-gray-300 px-2 py-1 text-sm">
                         {ligne.TauxTVA}
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-sm">
-                        {ligne.puttc || ""}
+                        {ligne.puttc}
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-sm">
-                        {ligne.netHt || ""}
+                        {ligne.netHt}
                       </td>
                     </tr>
                   ))}

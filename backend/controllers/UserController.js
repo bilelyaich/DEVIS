@@ -404,11 +404,54 @@ const getAllClients = async (req, res) => {
   }
 };
 
+const getAllSectors = async (req, res) => {
+  const { databaseName } = req.params;
+
+  if (!databaseName) {
+    return res
+      .status(400)
+      .json({ message: 'Le nom de la base de données est requis.' });
+  }
+
+  try {
+    const dbConnection = new Sequelize(`mysql://root:@127.0.0.1:3306/${databaseName}`, {
+      dialect: 'mysql',
+      logging: false,
+      pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+    });
+
+    await dbConnection.authenticate();
+
+    // Récupérer tous les secteurs de la table secteur
+    const sectors = await dbConnection.query(
+      `SELECT codesec, desisec FROM secteur`,
+      {
+        type: dbConnection.QueryTypes.SELECT,
+      }
+    );
+
+    if (sectors.length === 0) {
+      return res.status(404).json({ message: 'Aucun secteur trouvé dans cette base de données.' });
+    }
+
+    res.status(200).json({
+      message: 'Liste des secteurs récupérée avec succès.',
+      databaseName,
+      sectors,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des secteurs :', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des secteurs.' });
+  }
+};
+
+// Exporter la méthode
 module.exports = { 
   registerUser,
   loginUser,
   selectDatabase,
   getDevisDetails,
   getLatestDevisByYear,
-  getAllClients, 
+  getAllClients,
+  getAllSectors, // Nouvelle méthode ajoutée
 };

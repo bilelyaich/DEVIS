@@ -464,6 +464,7 @@ const createDevis = async (req, res) => {
     CODEREP,
     usera,
     rsoc,
+    codesecteur,
     MHT,
     articles,
   } = req.body;
@@ -536,6 +537,7 @@ const createDevis = async (req, res) => {
       RSREP,
       CODEREP,
       MHT,
+      codesecteur,
       CP: client.cp, // Ajout explicite du champ CP
       comm,
       RSCLI: client.rsoc,
@@ -608,12 +610,7 @@ const updateDevis = async (req, res) => {
   if (!code || code.trim() === "") {
     return res.status(400).json({ message: "Le code client est manquant." });
   }
-  if (!rsoc || rsoc.trim() === "") {
-    return res.status(400).json({ message: "Le champ 'rsoc' est manquant." });
-  }
-  if (!Array.isArray(articles) || articles.length === 0) {
-    return res.status(400).json({ message: "Le champ 'articles' doit être un tableau non vide." });
-  }
+  
 
   try {
     const dynamicSequelize = getSequelizeConnection(dbName);
@@ -686,7 +683,7 @@ const updateDevis = async (req, res) => {
       devis: {
         NUMBL: updatedDevis.NUMBL,
         CODECLI: updatedDevis.CODECLI,
-        rsoc: updatedDevis.rsoc,
+       
         articles: updatedArticles,
       },
     });

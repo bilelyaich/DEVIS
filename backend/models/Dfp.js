@@ -25,7 +25,7 @@ const defineDfpModel = (sequelize) => {
       },
       DATEBL: {
         type: DataTypes.DATE,
-        allowNull: false,
+        allowNull: true,
       },
       MREMISE: {
         type: DataTypes.FLOAT,
@@ -62,7 +62,12 @@ const defineDfpModel = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,       
       },
+      codesecteur: {  // Ajout du champ codesecteur
+        type: DataTypes.STRING,  // Définir le type selon tes besoins (ici, STRING)
+        allowNull: true,  // À définir si ce champ peut être nul ou pas
+      },
     },
+    
     {
       tableName: "dfp",
       timestamps: false,
