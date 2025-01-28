@@ -565,7 +565,7 @@ const createDevis = async (req, res) => {
         DesART: article.libelle,
         QteART: article.nbrunite,
         PUART: article.prix1,
-        Remise: article.Remise,
+     
         TauxTVA: article.tauxtva,
         Unite: article.unite || "unité",
         Conf: article.CONFIG || "",
@@ -663,7 +663,7 @@ const updateDevis = async (req, res) => {
         DesART: article.libelle,
         QteART: article.nbrunite,
         PUART: article.prix1,
-        Remise: article.Remise,
+       
         TauxTVA: article.tauxtva,
         Unite: article.unite || "unité",
         Conf: article.CONFIG || "",

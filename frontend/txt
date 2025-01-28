@@ -151,7 +151,7 @@ const DevisForm = () => {
   const [activeConfigIndex, setActiveConfigIndex] = useState(null);
   const [messages, setMessages] = useState({});
   const [selectedDatabase, setSelectedDatabase] = useState(
-    localStorage.getItem("selectedDatabase")
+localStorage.getItem("selectedDatabase")
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -174,6 +174,7 @@ const DevisForm = () => {
   const [mlettreMessage, setMlettreMessage] = useState("");
   const [secteurs, setSecteurs] = useState([]);
   const [databaseName, setDatabaseName] = useState(""); 
+  
   
 
 
@@ -199,13 +200,14 @@ const DevisForm = () => {
     return codeMatch && libelleMatch;
   });
 
-  const cancelMode = () => {
-    setIsNewMode(false);
+  const cancelEditMode = () => {
     setIsEditMode(false);
-    toast.info("Modifications annulées.");
   };
 
-  
+  const validateEditMode = () => {
+    setIsEditMode(false);
+  };
+
   const filteredFamilles = familles.filter((famille) =>
     famille.toLowerCase().includes(familleFilter.toLowerCase())
   );
@@ -361,12 +363,12 @@ const DevisForm = () => {
   };
 
   const updateConfig = async (index, newConfigValue) => {
-    const codeArt = formData.lignes[index].codeArt;
+    const code = formData.lignes[index].code;
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/${codeArt}/updateConfig`,
-        { codeart: codeArt, newConfigValue }
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/${code}/updateConfig`,
+        { codeart: code, newConfigValue }
       );
 
       if (response.status === 200) {
@@ -447,7 +449,7 @@ const DevisForm = () => {
           if (client) {
             setFormData((prevData) => ({
               ...prevData,
-              rsoc: client.rsoc,
+              RSCLI: client.rsoc,
               adresse: client.adresse,
               cp: client.cp,
               email: client.email,
@@ -489,7 +491,7 @@ const DevisForm = () => {
           if (client) {
             setFormData((prevData) => ({
               ...prevData,
-              code: client.code,
+              CODECLI: client.code,
               adresse: client.adresse,
               cp: client.cp,
               email: client.email,
@@ -673,7 +675,7 @@ const DevisForm = () => {
 
       setFormData({
         ...formData,
-        lignes: [], // Réinitialisation des lignes au début de l'appel
+        lignes: [], 
       });
 
       const response = await axios.get(
@@ -752,17 +754,25 @@ const DevisForm = () => {
   useEffect(() => {
     const selectedDatabase = localStorage.getItem("selectedDatabase");
     const selectedNumbl = localStorage.getItem("selectedDevisNumbl");
+
     if (!selectedDatabase) {
       setError("Base de données introuvable.");
       return;
     }
 
     if (selectedNumbl) {
-      fetchDevisDetails(selectedDatabase, selectedNumbl);
+      // Trouver l'index du devis sélectionné dans la liste des devis
+      const index = devisList.findIndex((devis) => devis.numbl.trim() === selectedNumbl.trim());
+      if (index !== -1) {
+        setSelectedDevisIndex(index); // Mettre à jour l'index sélectionné
+      }
+
+      fetchDevisDetails(selectedDatabase, selectedNumbl); // Charger les détails du devis
     } else {
       setError("Numéro de devis introuvable.");
     }
-  }, []);
+  }, [devisList]);
+
 
   const handleDevisChange = (selectedOption) => {
     if (selectedOption) {
@@ -876,6 +886,29 @@ const DevisForm = () => {
     }
   };
 
+  const calculateTotalDiscount = () => {
+    let totalRemise = 0;
+    lignes.forEach((ligne) => {
+      const remise = parseFloat(ligne.Remise) || 0;
+      const quantite = parseFloat(ligne.QteART) || 0;
+      const prix1 = parseFloat(ligne.PUART) || 0;
+      totalRemise += (remise / 100) * quantite * prix1; 
+    });
+    return totalRemise;
+  };
+
+
+  
+
+  useEffect(() => {
+   
+    const totalRemise = calculateTotalDiscount();
+    setFormData({
+      ...formData,
+      Remise: totalRemise.toFixed(2), 
+    });
+  }, [lignes]);
+
   const handleLigneChange = (index, field, value) => {
     const newLignes = [...formData.lignes];
     newLignes[index][field] = value;
@@ -971,6 +1004,7 @@ const DevisForm = () => {
   const addLigne = () => {
     setIsNewMode(true);
     setInitialFormData(formData);
+    
 
     setFormData({
       ...formData,
@@ -1017,6 +1051,8 @@ const DevisForm = () => {
         isVisible: true,
       },
     ]);
+    localStorage.removeItem("lignesValidees");
+    console.log("Nouveau devis prêt. Les lignes précédentes ont été supprimées.");
   };
 
   const removeLigne = (index) => {
@@ -1384,84 +1420,62 @@ const DevisForm = () => {
     try {
       const token = localStorage.getItem("token");
       const database = localStorage.getItem("selectedDatabase");
-
+  
       if (!token) {
         setError("Utilisateur non authentifié.");
         return;
       }
-
+  
       if (!database) {
         setError("Aucune base de données sélectionnée.");
         return;
       }
-
+  
       if (!formData || !formData.NUMBL) {
         setError("Les données du formulaire sont incomplètes.");
         return;
       }
-
+  
+      if (!formData.CODECLI) {
+        setError("Le code client est manquant.");
+        return;
+      }
+  
       const savedLignes = localStorage.getItem("lignesValidees");
       if (!savedLignes) {
-        console.error("Aucun article trouvé dans le localStorage.");
+        setError("Aucun article trouvé dans le localStorage.");
         return;
       }
-
-      const lignes = JSON.parse(savedLignes);
-
-      if (!Array.isArray(lignes) || lignes.length === 0) {
-        console.error("Les articles sont vides ou mal formatés.");
-        return;
-      }
-
-      const formattedLignes = lignes.map((ligne) => ({
-        CodeART: ligne.code || "",
-        DesART: ligne.libelle || "",
-        QteART: ligne.nbrunite || 0,
-        PUART: ligne.prix1 || 0,
-        Remise: ligne.Remise || 0,
-        TauxTVA: ligne.tauxtva || 0,
-        Unite: ligne.unite || "",
-        Conf: ligne.CONFIG || "",
-        famille: ligne.famille || "",
-        nbun: ligne.nbrunite || 0,
+  
+      const lignesExistantes = JSON.parse(savedLignes);
+  
+      const newLignes = []; // Supposons qu'il n'y a pas de nouvelles lignes pour le moment
+  
+      const allLignes = [...lignesExistantes, ...newLignes];
+  
+      const formattedLignes = allLignes.map((ligne) => ({
+        CodeART: ligne.CodeART || ligne.code || "",
+        DesART: ligne.DesART || ligne.libelle || "",
+        QteART: ligne.QteART || ligne.nbrunite || 0,
+        PUART: ligne.PUART || ligne.prix1 || 0,
+        Remise: ligne.Remise || ligne.remise || 0,
+        TauxTVA: ligne.TauxTVA || ligne.tauxtva || 0,
+        Unite: ligne.Unite || ligne.unite || "",
+        Conf: ligne.Conf || ligne.CONFIG || "",
+        Famille: ligne.Famille || ligne.famille || "",
+        MTTC: ligne.MTTC || ligne.montantTTC || "",
       }));
-
-      setIsNewMode(true);
-
-      const newLigne = {
-        CodeART: "",
-        DesART: "",
-        QteART: 0,
-        PUART: 0,
-        Remise: 0,
-        TauxTVA: 0,
-        Unite: "",
-        Conf: "",
-        famille: "",
-        nbun: 0,
-        isVisible: true,
-      };
-
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        lignes: [newLigne, ...prevFormData.lignes],
-      }));
-
+  
+      console.log("Lignes formatées :", formattedLignes);
+  
       const requestBody = {
         NUMBL: formData.NUMBL || "",
         code: formData.CODECLI || "",
-        rsoc: formData.rsoc || "",
         articles: formattedLignes,
-        MREMISE: formData.MREMISE || 0,
-        MTTC: formData.MTTC || 0,
-
-        CODEREP: formData.CODEREP || "",
-        RSREP: formData.RSREP || "",
-        comm: formData.comm || "",
       };
-
-      console.log("Données envoyées :", requestBody);
-
+  
+      console.log("Données envoyées :", JSON.stringify(requestBody, null, 2));
+  
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/api/devis/${database}/${formData.NUMBL}`,
         requestBody,
@@ -1471,21 +1485,56 @@ const DevisForm = () => {
           },
         }
       );
-
+  
       if (response.status === 200) {
         alert("Devis modifié avec succès !");
-
+        localStorage.setItem("lignesValidees", JSON.stringify(allLignes));
         setIsNewMode(true);
+        navigate("/devis-form");
       } else {
-        setError(
-          response.data.message || "Erreur lors de la modification du devis."
-        );
+        setError(response.data.message || "Erreur lors de la modification du devis.");
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à l'API :", error);
-      setError("Erreur serveur lors de la modification du devis.");
+  
+      if (error.response && error.response.data && error.response.data.message) {
+        setError(`Erreur serveur : ${error.response.data.message}`);
+      } else {
+        setError("Erreur serveur lors de la modification du devis.");
+      }
     }
   };
+  
+
+ const handleeditligneDevis = async () => {
+
+ 
+  setIsNewMode(false);
+  setIsEditMode(true);
+
+  const newLigne = {
+    CodeART: "",
+    DesART: "",
+    QteART: 0,
+    PUART: 0,
+    Remise: 0,
+    TauxTVA: 0,
+    Unite: "",
+    Conf: "",
+    famille: "",
+    nbun: 0,
+    isVisible: true,
+  };
+
+  setFormData((prevFormData) => ({
+    ...prevFormData,
+    lignes: [newLigne, ...prevFormData.lignes],
+  }));
+
+ }
+
+
+
 
 
   const fetchSecteurs = async () => {
@@ -1504,33 +1553,35 @@ const DevisForm = () => {
     }
   };
 
-  // Appeler la fonction fetchSecteurs au montage du composant
+  
   useEffect(() => {
     fetchSecteurs();
   }, []);
 
-  // Fonction pour gérer le changement dans "Code Secteur"
+
   const handleCodeSecteurChange = (event) => {
     const selectedCode = event.target.value;
 
-    // Trouver le secteur correspondant au code sélectionné
+   
     const secteur = secteurs.find((secteur) => secteur.codesec === selectedCode);
 
-    // Mettre à jour les champs "codesec" et "desisec"
+  
     if (secteur) {
       setFormData({
         ...formData,
         codesec: secteur.codesec,
-        desisec: secteur.desisec, // Mise à jour automatique du champ "Désignation Secteur"
+        desisec: secteur.desisec, 
       });
     } else {
       setFormData({
         ...formData,
         codesec: selectedCode,
-        desisec: "", // Réinitialiser "Désignation Secteur" si le code est invalide
+        desisec: "",
       });
     }
   };
+
+  
 
   return (
     <div>
@@ -1548,12 +1599,7 @@ const DevisForm = () => {
                 <>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsNewMode(true);
-                      setIsEditMode(false);
-                      addLigne(); // Appel à la fonction addLigne
-                    }}
-                    
+                    onClick={addLigne}
                     className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
                   >
                     <FontAwesomeIcon
@@ -1569,10 +1615,7 @@ const DevisForm = () => {
                   <button
                     type="button"
                     className="flex flex-col items-center border p-2 rounded-md hover:bg-gray-100"
-                    onClick={() => {
-                      setIsEditMode(true);
-                      setIsNewMode(false);
-                    }}
+                    onClick={handleeditligneDevis}
                   >
                     <FontAwesomeIcon
                       icon={faEdit}
@@ -1648,57 +1691,57 @@ const DevisForm = () => {
                     </span>
                   </button>
                 </>
-               ) : isNewMode ? (
-                             <>
-                               <button
-                                 type="button"
-                                 onClick={cancelMode}
-                                 className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-                               >
-                                 <FontAwesomeIcon icon={faTimes} className="text-3xl" />
-                                 <span className="ml-2 text-sm font-semibold text-gray-700">
-                                   Annuler
-                                 </span>
-                               </button>
-                               <div className="border-r border-gray-300 h-8"></div>
-             
-                               <button
-                                 type="button"
-                                 onClick={validateNewMode}
-                                 className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-                               >
-                                 <FontAwesomeIcon icon={faCheck} className="text-3xl" />
-                                 <span className="ml-2 text-sm font-semibold text-gray-700">
-                                   Valider
-                                 </span>
-                               </button>
-                             </>
-                           ) : isEditMode ? (
-                             <>
-                               <button
-                                 type="button"
-                                 onClick={cancelMode}
-                                 className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-                               >
-                                 <FontAwesomeIcon icon={faTimes} className="text-3xl" />
-                                 <span className="ml-2 text-sm font-semibold text-gray-700">
-                                   Annuler
-                                 </span>
-                               </button>
-                               <div className="border-r border-gray-300 h-8"></div>
-             
-                               <button
-                                 type="button"
-                                 onClick={handleUpdateDevis}
-                                 className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
-                               >
-                                 <FontAwesomeIcon icon={faCheck} className="text-3xl" />
-                                 <span className="ml-2 text-sm font-semibold text-gray-700">
-                                   Valider
-                                 </span>
-                               </button>
-                             </>
-                           ) : null}
+              ) : isNewMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={cancelNewMode}
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Annuler
+                    </span>
+                  </button>
+                  <div className="border-r border-gray-300 h-8"></div>
+
+                  <button
+                    type="button"
+                    onClick={validateNewMode}
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Valider
+                    </span>
+                  </button>
+                </>
+              ) : isEditMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={cancelEditMode}
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Annuler
+                    </span>
+                  </button>
+                  <div className="border-r border-gray-300 h-8"></div>
+
+                  <button
+                    type="button"
+                    onClick={handleUpdateDevis}
+                    className="flex items-center text-gray-700 border p-2 rounded-md hover:bg-gray-100"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="text-3xl" />
+                    <span className="ml-2 text-sm font-semibold text-gray-700">
+                      Valider
+                    </span>
+                  </button>
+                </>
+              ) : null}
             </div>
 
             <div className="flex justify-center space-x-8 flex-grow"></div>
@@ -1792,8 +1835,11 @@ const DevisForm = () => {
                         type="text"
                         name="CODECLI"
                         value={formData.CODECLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, CODECLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1820,11 +1866,15 @@ const DevisForm = () => {
                         type="text"
                         name="RSCLI"
                         value={formData.RSCLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, RSCLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
+
 
                   <div>
                     <label className="block font-medium">Adresse :</label>
@@ -1841,8 +1891,11 @@ const DevisForm = () => {
                         type="text"
                         name="ADRCLI"
                         value={formData.ADRCLI}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, ADRCLI: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1862,8 +1915,11 @@ const DevisForm = () => {
                         type="text"
                         name="cp"
                         value={formData.cp}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, cp: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1883,8 +1939,11 @@ const DevisForm = () => {
                         type="email"
                         name="email"
                         value={formData.email}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -1904,8 +1963,11 @@ const DevisForm = () => {
                         type="text"
                         name="tel1"
                         value={formData.tel1}
-                        readOnly
+                        readOnly={!isEditMode} 
                         className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={(e) =>
+                          setFormData({ ...formData, tel1: e.target.value }) // Mettre à jour formData
+                        }
                       />
                     )}
                   </div>
@@ -2029,8 +2091,11 @@ const DevisForm = () => {
             type="text"
             name="coderep"
             value={formData.CODEREP || ""}
-            readOnly
+            readOnly={!isEditMode} 
             className="w-full border border-gray-300 rounded-md p-2"
+            onChange={(e) =>
+              setFormData({ ...formData, CODEREP: e.target.value }) // Mettre à jour formData
+            }
           />
         )}
       </div>
@@ -2044,8 +2109,11 @@ const DevisForm = () => {
           type="text"
           name="RSREP"
           value={formData.RSREP || ""}
-          readOnly
+          readOnly={!isEditMode} 
           className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, RSREP: e.target.value }) // Mettre à jour formData
+          }
         />
       </div>
     </div>
@@ -2080,8 +2148,11 @@ const DevisForm = () => {
           type="text"
           name="codesec"
           value={formData.codesec || ""}
-          readOnly
+          readOnly={!isEditMode} 
           className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, codesec: e.target.value }) // Mettre à jour formData
+          }
         />
       )}
     </div>
@@ -2097,8 +2168,11 @@ const DevisForm = () => {
           type="text"
           name="desisec"
           value={formData.desisec || ""}
-          readOnly
+          readOnly={!isEditMode} 
           className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, desisec: e.target.value }) // Mettre à jour formData
+          }
         />
       </div>
     </div>
@@ -2119,10 +2193,14 @@ const DevisForm = () => {
       <textarea
         name="comm"
         value={formData.comm || ""}
-        readOnly
+        
         rows="2"
-        className="w-full border border-gray-300 rounded-md p-2"
-      />
+        readOnly={!isEditMode} 
+          className="w-full border border-gray-300 rounded-md p-2"
+          onChange={(e) =>
+            setFormData({ ...formData, comm: e.target.value }) // Mettre à jour formData
+          }
+        />
     )}
   </div>
 
@@ -2502,75 +2580,76 @@ const DevisForm = () => {
             </div>
           ))}
 
-          <div className="flex flex-col min-h-screen">
-            <div className="overflow-x-auto flex-grow">
-              <table className="table-auto w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border border-gray-300 p-2">Famille</th>
-                    <th className="border border-gray-300 p-2">Code Article</th>
-                    <th className="border border-gray-300 p-2">Libelle</th>
-                    <th className="border border-gray-300 p-2">Unité</th>
-                    <th className="border border-gray-300 p-2">Quantité</th>
-                    <th className="border border-gray-300 p-2">Remise</th>
-                    <th className="border border-gray-300 p-2">TVA</th>
-                    <th className="border border-gray-300 p-2">PUHT</th>
-                    <th className="border border-gray-300 p-2">PUTTC</th>
-                    <th className="border border-gray-300 p-2">NET HT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lignes.length > 0 &&
-                    lignes
-                      .filter((ligne) => ligne.QteART && ligne.PUART)
-                      .map((ligne, index) => {
-                        const quantite = parseFloat(ligne.QteART) || 0;
-                        const prix1 = parseFloat(ligne.PUART) || 0;
-                        const remise = parseFloat(ligne.Remise) || 0;
-                        const tauxtva = parseFloat(ligne.TauxTVA) || 0;
+<div className="flex flex-col min-h-screen">
+        <div className="overflow-x-auto flex-grow">
+          <table className="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-200">
+                {/* En-têtes du tableau */}
+                <th className="border border-gray-300 p-2">Famille</th>
+                <th className="border border-gray-300 p-2">Code Article</th>
+                <th className="border border-gray-300 p-2">Libelle</th>
+                <th className="border border-gray-300 p-2">Unité</th>
+                <th className="border border-gray-300 p-2">Quantité</th>
+                <th className="border border-gray-300 p-2">Remise</th>
+                <th className="border border-gray-300 p-2">TVA</th>
+                <th className="border border-gray-300 p-2">PUHT</th>
+                <th className="border border-gray-300 p-2">PUTTC</th>
+                <th className="border border-gray-300 p-2">NET HT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lignes.length > 0 &&
+                lignes
+                  .filter((ligne) => ligne.QteART && ligne.PUART)
+                  .map((ligne, index) => {
+                    const quantite = parseFloat(ligne.QteART) || 0;
+                    const prix1 = parseFloat(ligne.PUART) || 0;
+                    const remise = parseFloat(ligne.Remise) || 0;
+                    const tauxtva = parseFloat(ligne.TauxTVA) || 0;
 
-                        const netHt =
-                          quantite && prix1
-                            ? quantite * prix1 * (1 - remise / 100)
-                            : 0;
-                        const puttc =
-                          prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
+                    const netHt =
+                      quantite && prix1
+                        ? quantite * prix1 * (1 - remise / 100)
+                        : 0;
+                    const puttc =
+                      prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
 
-                        return (
-                          <tr key={index}>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.famille || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.CodeART || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.DesART || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {ligne.Unite || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {quantite || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {remise !== 0 ? `${remise}%` : ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {tauxtva || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {prix1 || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {puttc || ""}
-                            </td>
-                            <td className="border border-gray-300 p-2">
-                              {netHt || ""}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                    return (
+                      <tr key={index}>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.famille || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.CodeART || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.DesART || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {ligne.Unite || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {quantite || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {remise !== 0 ? `${remise}%` : ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {tauxtva || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {prix1 || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {puttc || ""}
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          {netHt || ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {lignesValidees.length > 0 &&
                     lignesValidees
                       .filter((ligne) => ligne.nbrunite && ligne.prix1)
@@ -2998,116 +3077,3 @@ const DevisForm = () => {
 };
 
 export default DevisForm;
-
-
-
-
-
-
-const handleValidate = (index, e) => {
-  e.preventDefault();
-
-  let isValid = true;
-  const ligneActuelle = formData.lignes[index];
-
-  if (
-    !ligneActuelle.code ||
-    !ligneActuelle.libelle ||
-    !ligneActuelle.unite ||
-    isNaN(ligneActuelle.prix1) ||
-    isNaN(ligneActuelle.nbrunite) ||
-    isNaN(ligneActuelle.tauxtva) ||
-    ligneActuelle.tauxtva < 0
-  ) {
-    isValid = false;
-  }
-
-  if (isValid) {
-    const quantite = parseFloat(ligneActuelle.quantite) || 0;
-    const prix1 = parseFloat(ligneActuelle.prix1) || 0;
-    const remise = parseFloat(ligneActuelle.Remise) || 0;
-    const tauxtva = parseFloat(ligneActuelle.tauxtva) || 0;
-
-    const montantHT = quantite * prix1;
-    const montantRemise = (montantHT * remise) / 100;
-    const netHT = montantHT - montantRemise;
-    const taxe = (netHT * tauxtva) / 100;
-    const montantTTC = netHT + taxe;
-
-    const ligneValidee = {
-     
-      CodeART: ligneActuelle.code,
-      DesART: ligneActuelle.libelle,
-      PUART: prix1,
-      QteART: quantite,
-      TauxTVA: tauxtva,
-      Unite: ligneActuelle.unite,
-      nbrunite: ligneActuelle.nbrunite,
-      famille: ligneActuelle.famille,
-      Remise: remise,
-      Conf: ligneActuelle.CONFIG,
-      netHt: ligneActuelle.netHt,
-
-     
-    };
-
-    let lignesValidees = JSON.parse(localStorage.getItem("lignesValidees")) || [];
-    lignesValidees.push(ligneValidee);
-    localStorage.setItem("lignesValidees", JSON.stringify(lignesValidees));
-
-    setLignesValidees(lignesValidees);
-
-    const totalMontantHT = lignesValidees.reduce(
-      (acc, ligne) => acc + parseFloat(ligne.montantHT),
-      0
-    );
-    const totalRemise = lignesValidees.reduce(
-      (acc, ligne) => acc + parseFloat(ligne.Remise),
-      0
-    );
-    const totalNetHT = lignesValidees.reduce(
-      (acc, ligne) => acc + parseFloat(ligne.netHT),
-      0
-    );
-    const totalTaxe = lignesValidees.reduce(
-      (acc, ligne) => acc + parseFloat(ligne.taxe),
-      0
-    );
-    const totalTTC = lignesValidees.reduce(
-      (acc, ligne) => acc + parseFloat(ligne.montantTTC),
-      0
-    );
-
-    setFormData((prevData) => ({
-      ...prevData,
-      lignes: prevData.lignes.map((ligne, ligneIndex) =>
-        ligneIndex === index
-          ? {
-              code: "",
-              libelle: "",
-              nbrunite: "",
-              prix1: "",
-              tauxtva: "",
-              unite: "",
-              famille: "",
-              netHt: "",
-              Remise: "",
-              quantite: "",
-              CONFIG: "",
-              isVisible: true,
-            }
-          : ligne
-      ),
-      totalHt: totalMontantHT.toFixed(3),
-      Remise: totalRemise.toFixed(3),
-      netHtGlobal: totalNetHT.toFixed(3),
-      taxe: totalTaxe.toFixed(3),
-      MTTC: totalTTC.toFixed(3),
-    }));
-  } else {
-    console.log(
-      "Formulaire invalide, veuillez remplir tous les champs correctement."
-    );
-  }
-};
-  

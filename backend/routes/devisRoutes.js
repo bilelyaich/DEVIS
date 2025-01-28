@@ -13,7 +13,7 @@ router.get('/:dbName/devis/libpv/:numbl', getLibpvByNumbl);
 router.get('/:dbName/devis/details', getDevisWithDetails);
 router.get("/devis-count-by-month-and-year/:dbName", getDevisCountByMonthAndYear);
 router.get('/:dbName/devis/total',getTotalDevis);
-router.get("/:dbName/devis-validees",getDevisValidees);
+router.get("/:dbName/devis-validees",getDevisValidees); 
 router.post('/:dbName/create', createDevis);
 router.get('/get-representant-details/:databaseName/:numbl', getCodeRepAndRsRep);
 router.put("/:dbName/:numbl", updateDevis);

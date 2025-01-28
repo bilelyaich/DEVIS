@@ -70,6 +70,7 @@ const DevisForm = () => {
         puttc: "",
         netHt: "",
         CONFIG: "",
+        
       },
     ],
     totalHt: "",
@@ -151,7 +152,7 @@ const DevisForm = () => {
   const [activeConfigIndex, setActiveConfigIndex] = useState(null);
   const [messages, setMessages] = useState({});
   const [selectedDatabase, setSelectedDatabase] = useState(
-localStorage.getItem("selectedDatabase")
+    localStorage.getItem("selectedDatabase")
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -173,11 +174,7 @@ localStorage.getItem("selectedDatabase")
   const location = useLocation();
   const [mlettreMessage, setMlettreMessage] = useState("");
   const [secteurs, setSecteurs] = useState([]);
-  const [databaseName, setDatabaseName] = useState(""); 
-  
-  
-
-
+  const [databaseName, setDatabaseName] = useState("");
 
   useEffect(() => {
     const locationFormData =
@@ -363,12 +360,12 @@ localStorage.getItem("selectedDatabase")
   };
 
   const updateConfig = async (index, newConfigValue) => {
-    const codeArt = formData.lignes[index].codeArt;
+    const code = formData.lignes[index].code;
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/${codeArt}/updateConfig`,
-        { codeart: codeArt, newConfigValue }
+        `${process.env.REACT_APP_API_URL}/api/devis/${selectedDatabase}/articles/${code}/updateConfig`,
+        { codeart: code, newConfigValue }
       );
 
       if (response.status === 200) {
@@ -675,7 +672,7 @@ localStorage.getItem("selectedDatabase")
 
       setFormData({
         ...formData,
-        lignes: [], 
+        lignes: [],
       });
 
       const response = await axios.get(
@@ -762,7 +759,9 @@ localStorage.getItem("selectedDatabase")
 
     if (selectedNumbl) {
       // Trouver l'index du devis sélectionné dans la liste des devis
-      const index = devisList.findIndex((devis) => devis.numbl.trim() === selectedNumbl.trim());
+      const index = devisList.findIndex(
+        (devis) => devis.numbl.trim() === selectedNumbl.trim()
+      );
       if (index !== -1) {
         setSelectedDevisIndex(index); // Mettre à jour l'index sélectionné
       }
@@ -772,7 +771,6 @@ localStorage.getItem("selectedDatabase")
       setError("Numéro de devis introuvable.");
     }
   }, [devisList]);
-
 
   const handleDevisChange = (selectedOption) => {
     if (selectedOption) {
@@ -892,20 +890,16 @@ localStorage.getItem("selectedDatabase")
       const remise = parseFloat(ligne.Remise) || 0;
       const quantite = parseFloat(ligne.QteART) || 0;
       const prix1 = parseFloat(ligne.PUART) || 0;
-      totalRemise += (remise / 100) * quantite * prix1; 
+      totalRemise += (remise / 100) * quantite * prix1;
     });
     return totalRemise;
   };
 
-
-  
-
   useEffect(() => {
-   
     const totalRemise = calculateTotalDiscount();
     setFormData({
       ...formData,
-      Remise: totalRemise.toFixed(2), 
+      Remise: totalRemise.toFixed(2),
     });
   }, [lignes]);
 
@@ -1004,7 +998,6 @@ localStorage.getItem("selectedDatabase")
   const addLigne = () => {
     setIsNewMode(true);
     setInitialFormData(formData);
-    
 
     setFormData({
       ...formData,
@@ -1052,7 +1045,9 @@ localStorage.getItem("selectedDatabase")
       },
     ]);
     localStorage.removeItem("lignesValidees");
-    console.log("Nouveau devis prêt. Les lignes précédentes ont été supprimées.");
+    console.log(
+      "Nouveau devis prêt. Les lignes précédentes ont été supprimées."
+    );
   };
 
   const removeLigne = (index) => {
@@ -1361,7 +1356,7 @@ localStorage.getItem("selectedDatabase")
       RSREP: formData.RSREP,
       CODEREP: formData.CODEREP,
       rsoc: formData.rsoc,
-      
+
       articles: lignes.map((ligne) => ({
         code: ligne.code,
         libelle: ligne.libelle,
@@ -1421,6 +1416,7 @@ localStorage.getItem("selectedDatabase")
       const token = localStorage.getItem("token");
       const database = localStorage.getItem("selectedDatabase");
   
+      // Vérification des données de base
       if (!token) {
         setError("Utilisateur non authentifié.");
         return;
@@ -1441,33 +1437,45 @@ localStorage.getItem("selectedDatabase")
         return;
       }
   
+      // Récupération et validation des lignes
       const savedLignes = localStorage.getItem("lignesValidees");
       if (!savedLignes) {
+        console.error("Aucun article trouvé dans le localStorage.");
         setError("Aucun article trouvé dans le localStorage.");
         return;
       }
   
-      const lignesExistantes = JSON.parse(savedLignes);
+      let lignes = JSON.parse(savedLignes);
+      console.log("Lignes récupérées du localStorage :", lignes);
   
-      const newLignes = []; // Supposons qu'il n'y a pas de nouvelles lignes pour le moment
+      if (!Array.isArray(lignes) || lignes.length === 0) {
+        console.error("Les articles sont vides ou mal formatés.");
+        setError("Les articles sont vides ou mal formatés.");
+        return;
+      }
   
-      const allLignes = [...lignesExistantes, ...newLignes];
+      // Ajouter les nouvelles lignes dans le format correct
+      const newLignes = formData.lignes || [];  // Assurez-vous que `formData.lignes` contient les nouvelles lignes ajoutées
+      const allLignes = [...lignes, ...newLignes];
   
+      // Formatage des lignes pour correspondre à ce que le serveur attend
       const formattedLignes = allLignes.map((ligne) => ({
-        CodeART: ligne.CodeART || ligne.code || "",
-        DesART: ligne.DesART || ligne.libelle || "",
-        QteART: ligne.QteART || ligne.nbrunite || 0,
-        PUART: ligne.PUART || ligne.prix1 || 0,
-        Remise: ligne.Remise || ligne.remise || 0,
-        TauxTVA: ligne.TauxTVA || ligne.tauxtva || 0,
-        Unite: ligne.Unite || ligne.unite || "",
-        Conf: ligne.Conf || ligne.CONFIG || "",
-        Famille: ligne.Famille || ligne.famille || "",
-        MTTC: ligne.MTTC || ligne.montantTTC || "",
+        code: ligne.CodeART || "", // "CodeART" → "code"
+        libelle: ligne.DesART || "", // "DesART" → "libelle"
+        nbrunite: ligne.QteART || 0, // "QteART" → "nbrunite"
+        prix1: ligne.PUART || 0, // "PUART" → "prix1"
+        remise: ligne.Remise || 0,
+        tauxtva: ligne.TauxTVA || 0, // "TauxTVA" → "tauxtva"
+        unite: ligne.Unite || "", // "Unite" → "unite"
+        config: ligne.Conf || "", // "Conf" → "CONFIG"
+        famille: ligne.famille || "",
+        nbun: ligne.QteART || 0,
+        PrixHT: ligne.PUHT || 0, 
       }));
   
       console.log("Lignes formatées :", formattedLignes);
   
+      // Construction du corps de la requête
       const requestBody = {
         NUMBL: formData.NUMBL || "",
         code: formData.CODECLI || "",
@@ -1476,6 +1484,7 @@ localStorage.getItem("selectedDatabase")
   
       console.log("Données envoyées :", JSON.stringify(requestBody, null, 2));
   
+      // Envoi de la requête PUT
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/api/devis/${database}/${formData.NUMBL}`,
         requestBody,
@@ -1486,17 +1495,17 @@ localStorage.getItem("selectedDatabase")
         }
       );
   
+      // Gestion de la réponse
       if (response.status === 200) {
         alert("Devis modifié avec succès !");
-        localStorage.setItem("lignesValidees", JSON.stringify(allLignes));
         setIsNewMode(true);
-        navigate("/devis-form");
       } else {
         setError(response.data.message || "Erreur lors de la modification du devis.");
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à l'API :", error);
   
+      // Affichage du message d'erreur spécifique retourné par le serveur
       if (error.response && error.response.data && error.response.data.message) {
         setError(`Erreur serveur : ${error.response.data.message}`);
       } else {
@@ -1505,37 +1514,29 @@ localStorage.getItem("selectedDatabase")
     }
   };
   
+  const handleeditligneDevis = async () => {
+    setIsNewMode(false);
+    setIsEditMode(true);
 
- const handleeditligneDevis = async () => {
+    const newLigne = {
+      CodeART: "",
+      DesART: "",
+      QteART: 0,
+      PUART: 0,
+      Remise: 0,
+      TauxTVA: 0,
+      Unite: "",
+      Conf: "",
+      famille: "",
+      nbun: 0,
+      isVisible: true,
+    };
 
- 
-  setIsNewMode(false);
-  setIsEditMode(true);
-
-  const newLigne = {
-    CodeART: "",
-    DesART: "",
-    QteART: 0,
-    PUART: 0,
-    Remise: 0,
-    TauxTVA: 0,
-    Unite: "",
-    Conf: "",
-    famille: "",
-    nbun: 0,
-    isVisible: true,
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      lignes: [newLigne, ...prevFormData.lignes],
+    }));
   };
-
-  setFormData((prevFormData) => ({
-    ...prevFormData,
-    lignes: [newLigne, ...prevFormData.lignes],
-  }));
-
- }
-
-
-
-
 
   const fetchSecteurs = async () => {
     try {
@@ -1553,24 +1554,22 @@ localStorage.getItem("selectedDatabase")
     }
   };
 
-  
   useEffect(() => {
     fetchSecteurs();
   }, []);
 
-
   const handleCodeSecteurChange = (event) => {
     const selectedCode = event.target.value;
 
-   
-    const secteur = secteurs.find((secteur) => secteur.codesec === selectedCode);
+    const secteur = secteurs.find(
+      (secteur) => secteur.codesec === selectedCode
+    );
 
-  
     if (secteur) {
       setFormData({
         ...formData,
         codesec: secteur.codesec,
-        desisec: secteur.desisec, 
+        desisec: secteur.desisec,
       });
     } else {
       setFormData({
@@ -1580,8 +1579,6 @@ localStorage.getItem("selectedDatabase")
       });
     }
   };
-
-  
 
   return (
     <div>
@@ -1835,10 +1832,14 @@ localStorage.getItem("selectedDatabase")
                         type="text"
                         name="CODECLI"
                         value={formData.CODECLI}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, CODECLI: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({
+                              ...formData,
+                              CODECLI: e.target.value,
+                            }) // Mettre à jour formData
                         }
                       />
                     )}
@@ -1866,15 +1867,15 @@ localStorage.getItem("selectedDatabase")
                         type="text"
                         name="RSCLI"
                         value={formData.RSCLI}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, RSCLI: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({ ...formData, RSCLI: e.target.value }) // Mettre à jour formData
                         }
                       />
                     )}
                   </div>
-
 
                   <div>
                     <label className="block font-medium">Adresse :</label>
@@ -1891,10 +1892,11 @@ localStorage.getItem("selectedDatabase")
                         type="text"
                         name="ADRCLI"
                         value={formData.ADRCLI}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, ADRCLI: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({ ...formData, ADRCLI: e.target.value }) // Mettre à jour formData
                         }
                       />
                     )}
@@ -1915,10 +1917,11 @@ localStorage.getItem("selectedDatabase")
                         type="text"
                         name="cp"
                         value={formData.cp}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, cp: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({ ...formData, cp: e.target.value }) // Mettre à jour formData
                         }
                       />
                     )}
@@ -1939,10 +1942,11 @@ localStorage.getItem("selectedDatabase")
                         type="email"
                         name="email"
                         value={formData.email}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({ ...formData, email: e.target.value }) // Mettre à jour formData
                         }
                       />
                     )}
@@ -1963,10 +1967,11 @@ localStorage.getItem("selectedDatabase")
                         type="text"
                         name="tel1"
                         value={formData.tel1}
-                        readOnly={!isEditMode} 
+                        readOnly={!isEditMode}
                         className="w-full border border-gray-300 rounded-md p-2"
-                        onChange={(e) =>
-                          setFormData({ ...formData, tel1: e.target.value }) // Mettre à jour formData
+                        onChange={
+                          (e) =>
+                            setFormData({ ...formData, tel1: e.target.value }) // Mettre à jour formData
                         }
                       />
                     )}
@@ -2064,158 +2069,176 @@ localStorage.getItem("selectedDatabase")
             </div>
 
             <div className="space-y-4 p-4 border rounded-md">
-  <h3 className="text-lg font-bold mb-4 flex items-center space-x-2">
-    <Edit className="text-black" />
-    <span>Informations de l'Utilisateur</span>
-  </h3>
-  
-  {/* Grid Layout with two columns */}
-  <div className="grid grid-cols-2 gap-4">
-    {/* Champ Vendeur */}
-    <div className="flex items-center space-x-2">
-      <div className="w-full">
-        <label className="block text-lg font-medium">Vendeur :</label>
-        {isNewMode ? (
-          <Select
-            options={representantsOptions}
-            onChange={handleVendeurChange}
-            value={representantsOptions.find(
-              (option) => option.value === formData.CODEREP
-            )}
-            placeholder="Sélectionner un vendeur"
-            isSearchable
-            className="w-full rounded-md p-2"
-          />
-        ) : (
-          <input
-            type="text"
-            name="coderep"
-            value={formData.CODEREP || ""}
-            readOnly={!isEditMode} 
-            className="w-full border border-gray-300 rounded-md p-2"
-            onChange={(e) =>
-              setFormData({ ...formData, CODEREP: e.target.value }) // Mettre à jour formData
-            }
-          />
-        )}
-      </div>
-    </div>
+              <h3 className="text-lg font-bold mb-4 flex items-center space-x-2">
+                <Edit className="text-black" />
+                <span>Informations de l'Utilisateur</span>
+              </h3>
 
-    {/* Champ RSREP */}
-    <div className="flex items-center space-x-2">
-      <div className="w-full">
-        <label className="block text-lg font-medium">RSREP</label>
-        <input
-          type="text"
-          name="RSREP"
-          value={formData.RSREP || ""}
-          readOnly={!isEditMode} 
-          className="w-full border border-gray-300 rounded-md p-2"
-          onChange={(e) =>
-            setFormData({ ...formData, RSREP: e.target.value }) // Mettre à jour formData
-          }
-        />
-      </div>
-    </div>
-  </div>
+              {/* Grid Layout with two columns */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Champ Vendeur */}
+                <div className="flex items-center space-x-2">
+                  <div className="w-full">
+                    <label className="block text-lg font-medium">
+                      Vendeur :
+                    </label>
+                    {isNewMode ? (
+                      <Select
+                        options={representantsOptions}
+                        onChange={handleVendeurChange}
+                        value={representantsOptions.find(
+                          (option) => option.value === formData.CODEREP
+                        )}
+                        placeholder="Sélectionner un vendeur"
+                        isSearchable
+                        className="w-full rounded-md p-2"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        name="coderep"
+                        value={formData.CODEREP || ""}
+                        readOnly={!isEditMode}
+                        className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={
+                          (e) =>
+                            setFormData({
+                              ...formData,
+                              CODEREP: e.target.value,
+                            }) // Mettre à jour formData
+                        }
+                      />
+                    )}
+                  </div>
+                </div>
 
-  {/* Champs Code Secteur et Désignation Secteur */}
-  <div className="grid grid-cols-2 gap-4 mt-4">
-  {/* Champ Code Secteur */}
-  <div className="flex items-center space-x-2">
-    <div className="w-full">
-      <label className="block text-lg font-medium">Code Secteur</label>
-      {isNewMode ? (
-        <select
-          name="codesec"
-          value={formData.codesec || ""}
-          onChange={handleCodeSecteurChange}
-          className="w-full border border-gray-300 rounded-md p-2"
-        >
-          <option value="">Sélectionner un secteur</option>
-          {secteurs.length > 0 ? (
-            secteurs.map((secteur) => (
-              <option key={secteur.codesec} value={secteur.codesec}>
-                {secteur.codesec}
-              </option>
-            ))
-          ) : (
-            <option disabled></option>
-          )}
-        </select>
-      ) : (
-        <input
-          type="text"
-          name="codesec"
-          value={formData.codesec || ""}
-          readOnly={!isEditMode} 
-          className="w-full border border-gray-300 rounded-md p-2"
-          onChange={(e) =>
-            setFormData({ ...formData, codesec: e.target.value }) // Mettre à jour formData
-          }
-        />
-      )}
-    </div>
-  </div>
+                {/* Champ RSREP */}
+                <div className="flex items-center space-x-2">
+                  <div className="w-full">
+                    <label className="block text-lg font-medium">RSREP</label>
+                    <input
+                      type="text"
+                      name="RSREP"
+                      value={formData.RSREP || ""}
+                      readOnly={!isEditMode}
+                      className="w-full border border-gray-300 rounded-md p-2"
+                      onChange={
+                        (e) =>
+                          setFormData({ ...formData, RSREP: e.target.value }) // Mettre à jour formData
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
 
+              {/* Champs Code Secteur et Désignation Secteur */}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {/* Champ Code Secteur */}
+                <div className="flex items-center space-x-2">
+                  <div className="w-full">
+                    <label className="block text-lg font-medium">
+                      Code Secteur
+                    </label>
+                    {isNewMode ? (
+                      <select
+                        name="codesec"
+                        value={formData.codesec || ""}
+                        onChange={handleCodeSecteurChange}
+                        className="w-full border border-gray-300 rounded-md p-2"
+                      >
+                        <option value="">Sélectionner un secteur</option>
+                        {secteurs.length > 0 ? (
+                          secteurs.map((secteur) => (
+                            <option
+                              key={secteur.codesec}
+                              value={secteur.codesec}
+                            >
+                              {secteur.codesec}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled></option>
+                        )}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        name="codesec"
+                        value={formData.codesec || ""}
+                        readOnly={!isEditMode}
+                        className="w-full border border-gray-300 rounded-md p-2"
+                        onChange={
+                          (e) =>
+                            setFormData({
+                              ...formData,
+                              codesec: e.target.value,
+                            }) // Mettre à jour formData
+                        }
+                      />
+                    )}
+                  </div>
+                </div>
 
+                {/* Champ Désignation Secteur */}
+                <div className="flex items-center space-x-2">
+                  <div className="w-full">
+                    <label className="block text-lg font-medium">
+                      Désignation Secteur
+                    </label>
+                    <input
+                      type="text"
+                      name="desisec"
+                      value={formData.desisec || ""}
+                      readOnly={!isEditMode}
+                      className="w-full border border-gray-300 rounded-md p-2"
+                      onChange={
+                        (e) =>
+                          setFormData({ ...formData, desisec: e.target.value }) // Mettre à jour formData
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
 
-    {/* Champ Désignation Secteur */}
-    <div className="flex items-center space-x-2">
-      <div className="w-full">
-        <label className="block text-lg font-medium">Désignation Secteur</label>
-        <input
-          type="text"
-          name="desisec"
-          value={formData.desisec || ""}
-          readOnly={!isEditMode} 
-          className="w-full border border-gray-300 rounded-md p-2"
-          onChange={(e) =>
-            setFormData({ ...formData, desisec: e.target.value }) // Mettre à jour formData
-          }
-        />
-      </div>
-    </div>
-  </div>
-  
-  {/* Commentaire et Affaire */}
-  <div className="mt-4">
-    <label className="block text-lg font-medium">Commentaire :</label>
-    {isNewMode || (formData.numbl && formData.comm === "") ? (
-      <textarea
-        name="comm"
-        value={formData.comm || ""}
-        onChange={handleChange}
-        rows="3"
-        className="w-full border border-gray-300 rounded-md p-2"
-      />
-    ) : (
-      <textarea
-        name="comm"
-        value={formData.comm || ""}
-        
-        rows="2"
-        readOnly={!isEditMode} 
-          className="w-full border border-gray-300 rounded-md p-2"
-          onChange={(e) =>
-            setFormData({ ...formData, comm: e.target.value }) // Mettre à jour formData
-          }
-        />
-    )}
-  </div>
+              {/* Commentaire et Affaire */}
+              <div className="mt-4">
+                <label className="block text-lg font-medium">
+                  Commentaire :
+                </label>
+                {isNewMode || (formData.numbl && formData.comm === "") ? (
+                  <textarea
+                    name="comm"
+                    value={formData.comm || ""}
+                    onChange={handleChange}
+                    rows="3"
+                    className="w-full border border-gray-300 rounded-md p-2"
+                  />
+                ) : (
+                  <textarea
+                    name="comm"
+                    value={formData.comm || ""}
+                    rows="2"
+                    readOnly={!isEditMode}
+                    className="w-full border border-gray-300 rounded-md p-2"
+                    onChange={
+                      (e) => setFormData({ ...formData, comm: e.target.value }) // Mettre à jour formData
+                    }
+                  />
+                )}
+              </div>
 
-  <div className="w-full mt-4">
-    <label className="block text-lg font-medium">Affaire :</label>
-    <input
-      type="text"
-      name="affaire" 
-      value={formData.affaire}
-      onChange={handleChange}
-      className="w-full border border-gray-300 rounded-md p-2"
-    />
-  </div>
-</div>
-</div>
+              <div className="w-full mt-4">
+                <label className="block text-lg font-medium">Affaire :</label>
+                <input
+                  type="text"
+                  name="affaire"
+                  value={formData.affaire}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md p-2"
+                />
+              </div>
+            </div>
+          </div>
           {formData.lignes.map((ligne, index) => (
             <div
               key={ligne.id}
@@ -2580,79 +2603,78 @@ localStorage.getItem("selectedDatabase")
             </div>
           ))}
 
-<div className="flex flex-col min-h-screen">
-        <div className="overflow-x-auto flex-grow">
-          <table className="table-auto w-full border-collapse border border-gray-300">
-            <thead>
-              <tr className="bg-gray-200">
-                {/* En-têtes du tableau */}
-                <th className="border border-gray-300 p-2">Famille</th>
-                <th className="border border-gray-300 p-2">Code Article</th>
-                <th className="border border-gray-300 p-2">Libelle</th>
-                <th className="border border-gray-300 p-2">Unité</th>
-                <th className="border border-gray-300 p-2">Quantité</th>
-                <th className="border border-gray-300 p-2">Remise</th>
-                <th className="border border-gray-300 p-2">TVA</th>
-                <th className="border border-gray-300 p-2">PUHT</th>
-                <th className="border border-gray-300 p-2">PUTTC</th>
-                <th className="border border-gray-300 p-2">NET HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lignes.length > 0 &&
-                lignes
-                  .filter((ligne) => ligne.QteART && ligne.PUART)
-                  .map((ligne, index) => {
-                    const quantite = parseFloat(ligne.QteART) || 0;
-                    const prix1 = parseFloat(ligne.PUART) || 0;
-                    const remise = parseFloat(ligne.Remise) || 0;
-                    const tauxtva = parseFloat(ligne.TauxTVA) || 0;
+          <div className="flex flex-col min-h-screen">
+            <div className="overflow-x-auto flex-grow">
+              <table className="table-auto w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-200">
+                    {/* En-têtes du tableau */}
+                    <th className="border border-gray-300 p-2">Famille</th>
+                    <th className="border border-gray-300 p-2">Code Article</th>
+                    <th className="border border-gray-300 p-2">Libelle</th>
+                    <th className="border border-gray-300 p-2">Unité</th>
+                    <th className="border border-gray-300 p-2">Quantité</th>
+                    <th className="border border-gray-300 p-2">Remise</th>
+                    <th className="border border-gray-300 p-2">TVA</th>
+                    <th className="border border-gray-300 p-2">PUHT</th>
+                    <th className="border border-gray-300 p-2">PUTTC</th>
+                    <th className="border border-gray-300 p-2">NET HT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lignes.length > 0 &&
+                    lignes
+                      .filter((ligne) => ligne.QteART && ligne.PUART)
+                      .map((ligne, index) => {
+                        const quantite = parseFloat(ligne.QteART) || 0;
+                        const prix1 = parseFloat(ligne.PUART) || 0;
+                        const remise = parseFloat(ligne.Remise) || 0;
+                        const tauxtva = parseFloat(ligne.TauxTVA) || 0;
 
-                    const netHt =
-                      quantite && prix1
-                        ? quantite * prix1 * (1 - remise / 100)
-                        : 0;
-                    const puttc =
-                      prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
+                        const netHt =
+                          quantite && prix1
+                            ? quantite * prix1 * (1 - remise / 100)
+                            : 0;
+                        const puttc =
+                          prix1 && tauxtva ? prix1 * (1 + tauxtva / 100) : 0;
 
-                    return (
-                      <tr key={index}>
-                        <td className="border border-gray-300 p-2">
-                          {ligne.famille || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {ligne.CodeART || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {ligne.DesART || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {ligne.Unite || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {quantite || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {remise !== 0 ? `${remise}%` : ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {tauxtva || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {prix1 || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {puttc || ""}
-                        </td>
-                        <td className="border border-gray-300 p-2">
-                          {netHt || ""}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        return (
+                          <tr key={index}>
+                            <td className="border border-gray-300 p-2">
+                              {ligne.famille || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {ligne.CodeART || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {ligne.DesART || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {ligne.Unite || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {quantite || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {remise !== 0 ? `${remise}%` : ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {tauxtva || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {prix1 || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {puttc || ""}
+                            </td>
+                            <td className="border border-gray-300 p-2">
+                              {netHt || ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   {lignesValidees.length > 0 &&
-                    lignesValidees
-                      .filter((ligne) => ligne.nbrunite && ligne.prix1)
+                    lignesValidees.filter((ligne) => ligne.nbrunite && ligne.prix1)
                       .map((ligne, idx) => (
                         <tr key={idx} className="border-b hover:bg-indigo-100">
                           <td className="border border-gray-300 p-2">
